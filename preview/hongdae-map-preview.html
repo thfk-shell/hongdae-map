@@ -1,0 +1,5672 @@
+<title>홍대 느슨지도 v0.2.1</title>
+<meta name="description" content="홍대·연남·상수·합정에서 친구들과 갈 곳을 고르는 큐레이션 지도">
+<meta name="theme-color" content="#F4F5F0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<style>
+/* 홍대 느슨지도
+   레이아웃: 휴대폰은 지도 전체 + 위 검색줄 + 아래에서 끌어올리는 목록 시트.
+             900px 이상은 왼쪽 목록 패널 + 오른쪽 지도. */
+:root {
+  --paper: #EEF0EA;      /* 지도 바탕 (타일이 없을 때도) */
+  --surface: #FFFFFF;
+  --surface-2: #F5F6F2;
+  --ink: #17201C;
+  --muted: #5B655F;
+  --line: #DCE0D8;
+  --accent: #17201C;     /* 주 버튼은 잉크색 */
+  --hi: #DDF247;         /* 형광펜: 선택·활성 */
+  --heart: #E5306A;
+  --ok: #17804A;  --ok-bg: #E3F4E8;
+  --mid: #2B5DB8; --mid-bg: #E5EDFB;
+  --warn: #9A5B00; --warn-bg: #FFF1D2; --warn-line: #F2D08A;
+  --closed: #8A918C;
+  --shadow: 0 -6px 24px rgba(23, 32, 28, .12);
+  --font-display: "Do Hyeon", "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --r: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1C2220; --surface: #141917; --surface-2: #1E2522; --ink: #EAEFE9; --muted: #A1ABA5; --line: #2E3733;
+    --accent: #EAEFE9; --hi: #D4EC3A; --heart: #FF5A8E;
+    --ok: #5FD18F; --ok-bg: #173325; --mid: #8DB2FF; --mid-bg: #1A2742;
+    --warn: #F4C065; --warn-bg: #3A2C10; --warn-line: #6B5321; --closed: #7C857F;
+    --shadow: 0 -6px 24px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #1C2220; --surface: #141917; --surface-2: #1E2522; --ink: #EAEFE9; --muted: #A1ABA5; --line: #2E3733;
+  --accent: #EAEFE9; --hi: #D4EC3A; --heart: #FF5A8E;
+  --ok: #5FD18F; --ok-bg: #173325; --mid: #8DB2FF; --mid-bg: #1A2742;
+  --warn: #F4C065; --warn-bg: #3A2C10; --warn-line: #6B5321; --closed: #7C857F;
+  --shadow: 0 -6px 24px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+  -webkit-text-size-adjust: 100%; overscroll-behavior: none;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--mid); }
+:focus-visible { outline: 3px solid var(--hi); outline-offset: 2px; box-shadow: 0 0 0 5px var(--ink); }
+#app { position: fixed; inset: 0; overflow: hidden; }
+
+/* ---------- 지도 ---------- */
+.map { position: absolute; inset: 0; background: var(--paper); z-index: 0; }
+.leaflet-container { background: var(--paper); font-family: var(--font-body); }
+.map.no-tiles { background:
+  linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 48px 48px,
+  linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 48px 48px, var(--paper); }
+.leaflet-control-attribution { font-size: 10px; background: color-mix(in srgb, var(--surface) 80%, transparent) !important; color: var(--muted); }
+.leaflet-control-attribution a { color: var(--muted); }
+.leaflet-control-scale { margin-left: 10px !important; margin-bottom: 6px !important; }
+.leaflet-control-scale-line { background: color-mix(in srgb, var(--surface) 75%, transparent); border-color: var(--ink); color: var(--ink); }
+.mapnote {
+  position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 116px);
+  z-index: 30; max-width: min(92vw, 420px); background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line);
+  padding: 8px 12px; border-radius: 10px; font-size: 13px; pointer-events: none;
+}
+
+.pin-wrap { background: none; border: 0; }
+.pin { position: relative; width: 34px; height: 34px; display: grid; place-items: center; }
+.pin-dot {
+  width: 30px; height: 30px; border-radius: 50% 50% 50% 6px; transform: rotate(-45deg);
+  background: var(--c); border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.28);
+  display: grid; place-items: center; font-size: 15px; line-height: 1; transition: transform .15s;
+}
+
+.pin-dot { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.pin-dot b { font: 700 14px/1 var(--font-body); color: #fff; }
+.pin-dot > * { transform: rotate(45deg); display: inline-block; }
+.pin.is-dim .pin-dot { filter: saturate(.25) brightness(1.1); opacity: .75; }
+.pin.is-warn .pin-dot { border-style: dashed; }
+.pin.is-sel .pin-dot { transform: rotate(-45deg) scale(1.3); border-color: var(--hi); box-shadow: 0 0 0 3px #17201C, 0 4px 10px rgba(0,0,0,.35); }
+.pin-heart { position: absolute; right: -3px; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: var(--heart); border: 2px solid #fff; }
+.pin-label {
+  position: absolute; top: 34px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font: 600 11px/1.2 var(--font-body); color: #17201C; background: rgba(255,255,255,.9); padding: 2px 5px; border-radius: 5px;
+  display: none; pointer-events: none;
+}
+.show-labels .pin-label, .pin.is-sel .pin-label { display: block; }
+.pin.is-sel .pin-label { background: var(--hi); top: 38px; }
+
+.zone-label { pointer-events: none; display: none; }
+.show-zones .zone-label { display: block; }
+.zone-label span {
+  display: block; text-align: center; font: 22px/1 var(--font-display); color: #17201C; opacity: .35; letter-spacing: .02em; white-space: nowrap;
+}
+.exit-pin { display: flex; align-items: center; gap: 4px; pointer-events: none; }
+.exit-pin b {
+  flex: none; width: 18px; height: 18px; border-radius: 4px; background: #3C9A3C; color: #fff;
+  font: 700 11px/18px var(--font-body); text-align: center;
+}
+.exit-pin span { font: 600 10px/1.1 var(--font-body); color: #2C6B2C; white-space: nowrap; background: rgba(255,255,255,.8); padding: 1px 3px; border-radius: 3px; }
+.ring { fill: #DDF247; fill-opacity: .12; stroke: #17201C; stroke-width: 1.5; stroke-dasharray: 5 6; }
+.ring-label { pointer-events: none; }
+.ring-label span { display: inline-block; font: 600 11px/1 var(--font-body); background: #17201C; color: #DDF247; padding: 3px 6px; border-radius: 20px; }
+.route { stroke: #17201C; stroke-width: 3; stroke-dasharray: 2 7; stroke-linecap: round; fill: none; }
+.me-pin span { display: block; width: 18px; height: 18px; border-radius: 50%; background: #2B6BE8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(43,107,232,.25); }
+
+/* ---------- 상단 검색줄 ---------- */
+.topbar {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 20;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 92%, transparent) 70%, transparent);
+  pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+.searchrow { display: flex; gap: 8px; align-items: stretch; }
+.search {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; background: var(--surface); border: 2px solid var(--ink);
+  border-radius: 14px; padding: 0 6px 0 8px; height: 48px; box-shadow: 0 2px 0 var(--ink);
+}
+.brand { font: 13px/1 var(--font-display); background: var(--hi); color: #17201C; padding: 5px 5px 4px; border-radius: 6px; text-align: center; flex: none; }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 16px; padding: 0; }
+.search input::-webkit-search-cancel-button { display: none; }
+.search-clear { border: 0; background: var(--surface-2); width: 30px; height: 30px; border-radius: 50%; font-size: 18px; line-height: 1; color: var(--muted); }
+.savedbtn {
+  flex: none; display: flex; align-items: center; gap: 5px; height: 48px; padding: 0 12px; border-radius: 14px;
+  border: 2px solid var(--ink); background: var(--surface); box-shadow: 0 2px 0 var(--ink); font-weight: 700;
+}
+.savedbtn svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 2; }
+.savedbtn.has svg { fill: var(--heart); stroke: var(--heart); }
+.cats {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 8px -12px 0; padding: 2px 12px 4px;
+}
+.cats::-webkit-scrollbar { display: none; }
+.cat {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--surface); font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+.cat.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.cat[style].on { background: var(--c); border-color: var(--c); color: #fff; }
+
+/* ---------- 지도 버튼 ---------- */
+.mapctl { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); bottom: 50%; z-index: 15; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; transition: bottom .25s; }
+.mapctl > button {
+  height: 44px; min-width: 44px; padding: 0 10px; border-radius: 12px; border: 2px solid var(--ink); background: var(--surface);
+  box-shadow: 0 2px 0 var(--ink); font-weight: 700; font-size: 13px; display: grid; place-items: center;
+}
+.mapctl svg { width: 22px; height: 22px; fill: var(--ink); stroke: var(--ink); }
+.zonemenu { position: absolute; right: 52px; bottom: 0; background: var(--surface); border: 2px solid var(--ink); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 140px; }
+.zonemenu button { border: 0; background: none; text-align: left; padding: 11px 14px; font-weight: 600; border-bottom: 1px solid var(--line); }
+.zonemenu button:last-child { border-bottom: 0; }
+
+/* ---------- 시트 ---------- */
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 25; height: 48%;
+  background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; transition: height .28s cubic-bezier(.2,.8,.2,1);
+}
+.sheet.instant { transition: none; }
+.grab { flex: none; height: 26px; display: grid; place-items: center; touch-action: none; cursor: grab; }
+.handle { width: 44px; height: 5px; border-radius: 5px; background: var(--line); }
+.sheet-body {
+  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) max(16px, env(safe-area-inset-left, 0px));
+}
+
+.hello h1 { font: 23px/1.15 var(--font-display); margin: 2px 0 4px; letter-spacing: -.01em; text-wrap: balance; }
+.hello p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+.themes { display: grid; grid-auto-flow: column; grid-auto-columns: 128px; gap: 8px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px 4px; scrollbar-width: none; }
+.themes::-webkit-scrollbar { display: none; }
+.theme {
+  text-align: left; border: 1.5px solid var(--ink); background: var(--surface); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;
+}
+.theme b { font: 16px/1.15 var(--font-display); }
+.theme span { font-size: 12px; color: var(--muted); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.theme:active { background: var(--hi); color: #17201C; }
+
+.chiprow { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 8px; scrollbar-width: none; align-items: center; }
+.chiprow::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 32px; padding: 0 11px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chip.tag { font-weight: 500; color: var(--muted); }
+.chip.on { background: var(--hi); border-color: var(--ink); color: #17201C; }
+.sep { flex: none; width: 1px; height: 20px; background: var(--line); }
+
+.listhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 0 8px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.count b { color: var(--ink); font-size: 15px; }
+.origin { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.origin span { font-size: 12px; }
+.origin select { border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); padding: 4px 6px; font-size: 13px; max-width: 190px; }
+.link { border: 0; background: none; color: var(--mid); text-decoration: underline; padding: 0; font-size: 13px; }
+
+.plist { list-style: none; margin: 0; padding: 0; }
+.pcard { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+.pcard-main { flex: 1; min-width: 0; display: flex; gap: 11px; text-align: left; border: 0; background: none; padding: 12px 0; }
+.pcard-main:active { background: var(--surface-2); }
+.pc-ic {
+  flex: none; width: 38px; height: 38px; border-radius: 11px; background: color-mix(in srgb, var(--c) 16%, var(--surface));
+  display: grid; place-items: center; font-size: 19px; border: 1.5px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.pc-ic b { font-size: 16px; color: var(--c); }
+.pc-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pc-top { display: flex; align-items: baseline; gap: 6px; }
+.pc-name { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-cat { flex: none; font-size: 11px; font-weight: 700; color: var(--c); }
+.pc-reason { font-size: 14px; color: var(--ink); line-height: 1.4; opacity: .88; }
+.pc-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; color: var(--muted); align-items: center; }
+.st { font-weight: 600; }
+.st::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; background: var(--closed); }
+.st-open { color: var(--ok); } .st-open::before { background: var(--ok); }
+.st-closing { color: var(--warn); } .st-closing::before { background: var(--warn); }
+.st-before, .st-closed, .st-unknown { color: var(--muted); }
+.flag { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; }
+.f-warn, .f-hide { background: var(--warn-bg); color: var(--warn); }
+.f-loc { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line); }
+.heart { flex: none; width: 48px; border: 0; background: none; display: grid; place-items: center; }
+.heart svg { width: 24px; height: 24px; fill: none; stroke: var(--muted); stroke-width: 1.8; }
+.heart.on svg { fill: var(--heart); stroke: var(--heart); }
+.heart:not(.sm) { width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--line); }
+
+.empty { text-align: center; padding: 28px 8px; color: var(--muted); }
+.empty b { color: var(--ink); display: block; font-size: 16px; }
+.hiddennote { font-size: 13px; color: var(--muted); margin: 14px 0 0; }
+.foot { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.foot p { margin: 0 0 6px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 12px;
+  border: 1.5px solid var(--ink); background: var(--surface); font-weight: 700; font-size: 14px; text-decoration: none; color: var(--ink);
+}
+.btn.primary { background: var(--accent); color: var(--surface); }
+.btn.quiet { border-color: var(--line); color: var(--muted); }
+.btn.danger { background: var(--heart); border-color: var(--heart); color: #fff; }
+.btn.wide { width: 100%; margin-top: 10px; }
+.ghost { border: 1.5px solid currentColor; background: transparent; border-radius: 10px; padding: 6px 10px; font-weight: 700; font-size: 13px; }
+
+.nearbar {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin: 0 0 10px; border-radius: 12px;
+  background: var(--hi); color: #17201C;
+}
+.nearbar > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.nearbar small { font-size: 12px; }
+.nearbar b { font: 19px/1.15 var(--font-display); }
+
+/* ---------- 상세 ---------- */
+.d-nav { display: flex; justify-content: space-between; align-items: center; padding: 0 0 6px; position: sticky; top: 0; background: var(--surface); z-index: 2; }
+.back { border: 0; background: none; font-weight: 700; padding: 8px 4px; font-size: 15px; }
+.d-head { padding: 2px 0 12px; }
+.d-cat { display: inline-flex; gap: 4px; align-items: center; font-size: 13px; font-weight: 700; color: var(--c); }
+.d-head h1 { font: 30px/1.1 var(--font-display); margin: 4px 0 6px; text-wrap: balance; }
+.d-reason { margin: 0 0 8px; font-size: 17px; font-weight: 600; line-height: 1.4; background: linear-gradient(transparent 60%, color-mix(in srgb, var(--hi) 70%, transparent) 60%); display: inline; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.d-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.d-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.d-actions .near { grid-column: 1 / -1; background: var(--hi); color: #17201C; border-color: var(--ink); }
+.map-n { border-color: #03C75A; color: #03A04A; }
+.map-k { border-color: #E5C200; color: #6B5800; }
+:root[data-theme="dark"] .map-k { color: #F2D64B; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-k { color: #F2D64B; } }
+.d-warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--ink); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; }
+.d-warn h2 { margin: 0 0 4px; font-size: 14px; color: var(--warn); }
+.d-warn ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.d-desc { margin: 0 0 6px; color: var(--ink); opacity: .9; }
+.d-sec { padding: 14px 0; border-top: 1px solid var(--line); }
+.d-sec h2 { font: 19px/1.2 var(--font-display); margin: 0 0 8px; }
+.note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.r-basis { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+.r-basis b { color: var(--warn); }
+.r-note { font-size: 13px; background: var(--warn-bg); color: var(--warn); padding: 6px 10px; border-radius: 8px; margin: 0 0 10px; }
+.r-block { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid var(--line); }
+.r-block h3 { margin: 0 0 2px; font-size: 13px; }
+.r-block ul { margin: 0; padding-left: 16px; font-size: 14px; }
+.r-pros { border-color: var(--ok); } .r-pros h3 { color: var(--ok); }
+.r-cons { border-color: var(--warn); } .r-cons h3 { color: var(--warn); }
+.r-for { border-color: var(--mid); } .r-for h3 { color: var(--mid); }
+.r-src summary { font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.r-src ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+.r-more { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 13px; margin-top: 10px; }
+.r-more span { color: var(--muted); font-size: 12px; }
+.r-more a { font-weight: 600; }
+.hours { border-collapse: collapse; width: 100%; max-width: 360px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.hours th, .hours td { text-align: left; padding: 4px 0; border-bottom: 1px dashed var(--line); font-weight: 400; }
+.hours th { width: 76px; color: var(--muted); }
+.hours tr.today th, .hours tr.today td { font-weight: 700; color: var(--ink); }
+.info, .traits { margin: 0; display: grid; gap: 8px; }
+.info > div, .traits > div { display: grid; grid-template-columns: 86px 1fr; gap: 10px; font-size: 14px; }
+.info dt, .traits dt { color: var(--muted); font-size: 13px; }
+.info dd, .traits dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.traits dd.none { color: var(--muted); }
+.d-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 14px; }
+.events { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.events li { display: flex; gap: 10px; }
+.dday { flex: none; align-self: start; background: var(--ink); color: var(--hi); font-weight: 700; font-size: 12px; padding: 3px 7px; border-radius: 6px; }
+.events b { display: block; } .events small { display: block; color: var(--muted); } .events a { font-size: 13px; }
+.plist.compact .pcard-main { padding: 9px 0; }
+.plist.compact .pc-reason { font-size: 13px; }
+.src ul { padding-left: 18px; margin: 8px 0 0; font-size: 14px; }
+.src li small { display: block; color: var(--muted); font-size: 12px; }
+.vline { margin: 0; font-size: 13px; color: var(--muted); }
+.vb { font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-right: 4px; }
+.v-ok { background: var(--ok-bg); color: var(--ok); }
+.v-mid { background: var(--mid-bg); color: var(--mid); }
+.v-warn { background: var(--warn-bg); color: var(--warn); }
+
+/* ---------- 저장 ---------- */
+.savedhead h1 { font: 26px/1.15 var(--font-display); margin: 0 0 4px; }
+.savedhead p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.course .pc-ic { background: var(--c); }
+.course .pc-ic b { color: #fff; }
+.savedacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+/* ---------- 알림·창 ---------- */
+.toast {
+  position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 112px); z-index: 60;
+  background: var(--ink); color: var(--surface); padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  max-width: min(92vw, 420px); text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); pointer-events: none;
+}
+.modal { position: absolute; inset: 0; z-index: 70; background: rgba(10, 14, 12, .5); display: grid; place-items: center; padding: 16px; }
+.modal-box { background: var(--surface); border-radius: 16px; padding: 18px; width: min(100%, 420px); }
+.modal-box h2 { margin: 0 0 6px; font-size: 18px; }
+.modal-box p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.modal-box textarea { width: 100%; font: 13px/1.4 var(--font-body); padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+.modal-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+/* ---------- 넓은 화면 ---------- */
+@media (min-width: 900px) {
+  .topbar { right: auto; width: 420px; background: var(--surface); padding-bottom: 6px; border-right: 1px solid var(--line); }
+  .sheet { top: var(--topH, 112px); bottom: 0; left: 0; right: auto; width: 420px; height: auto !important; border-radius: 0; box-shadow: none; border-right: 1px solid var(--line); }
+  .grab { display: none; }
+  .sheet-body { padding-top: 8px; }
+  .mapctl { bottom: 24px !important; }
+  .toast, .mapnote { left: calc(420px + (100% - 420px) / 2); top: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .mapctl, .pin-dot { transition: none; }
+}
+.pin-dot i { font-style: normal; }
+
+.far .pin { transform: scale(.78); }
+.far .exit-pin span { display: none; }
+
+</style>
+<div id="app">
+  <header class="topbar" id="topbar">
+    <div class="searchrow">
+      <label class="search" for="q">
+        <span class="brand" aria-hidden="true">느슨<br>지도</span>
+        <input id="q" type="search" placeholder="장소, 작품, 태그 검색 (예: 치이카와, 가챠)" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="search-clear" id="qClear" aria-label="검색어 지우기" hidden>×</button>
+      </label>
+      <button type="button" class="savedbtn" id="savedBtn" aria-label="저장한 장소">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>
+        <span id="savedCount">0</span>
+      </button>
+    </div>
+    <div class="cats" id="cats" role="group" aria-label="카테고리"></div>
+  </header>
+
+  <div id="map" class="map" aria-label="홍대 지도"></div>
+  <div class="mapnote" id="mapNote" hidden></div>
+
+  <div class="mapctl" id="mapCtl">
+    <button type="button" id="zoneBtn" aria-haspopup="true" aria-expanded="false">동네</button>
+    <button type="button" id="locBtn" aria-label="내 위치를 기준으로">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="7" fill="none" stroke-width="2"/></svg>
+    </button>
+    <div class="zonemenu" id="zoneMenu" hidden></div>
+  </div>
+
+  <section class="sheet" id="sheet" aria-label="장소 목록">
+    <div class="grab" id="grab">
+      <div class="handle" aria-hidden="true"></div>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="modal" id="modal" hidden></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+window.HM_PREVIEW = true; // 미리보기 표시: 지도 배경이 막힌 이유를 정확히 안내
+/* 카테고리·태그·테마·기준점·지도 설정 */
+window.HM_SETTINGS = {
+  "appName": "홍대 느슨지도",
+  "categories": [
+    {
+      "id": "goods",
+      "label": "굿즈·덕질",
+      "short": "굿즈",
+      "icon": "🎁",
+      "color": "#7357F6"
+    },
+    {
+      "id": "fashion",
+      "label": "패션·빈티지",
+      "short": "패션",
+      "icon": "👕",
+      "color": "#2A63F0"
+    },
+    {
+      "id": "lifestyle",
+      "label": "소품·액세서리",
+      "short": "소품",
+      "icon": "🧸",
+      "color": "#E06A1B"
+    },
+    {
+      "id": "dessert",
+      "label": "디저트·카페",
+      "short": "디저트",
+      "icon": "🍰",
+      "color": "#D63C74"
+    },
+    {
+      "id": "food",
+      "label": "식사·맛집",
+      "short": "식사",
+      "icon": "🍽️",
+      "color": "#B07400"
+    },
+    {
+      "id": "play",
+      "label": "놀거리·체험",
+      "short": "체험",
+      "icon": "🎮",
+      "color": "#0E9470"
+    }
+  ],
+  "quickFilters": [
+    {
+      "id": "open",
+      "label": "지금 영업 중",
+      "icon": "🟢"
+    },
+    {
+      "id": "indoor",
+      "label": "실내",
+      "icon": "☔"
+    },
+    {
+      "id": "cheap",
+      "label": "저렴한 곳",
+      "icon": "💸"
+    },
+    {
+      "id": "late",
+      "label": "늦게까지",
+      "icon": "🌙"
+    },
+    {
+      "id": "limited",
+      "label": "기간 한정",
+      "icon": "🔥"
+    }
+  ],
+  "themes": [
+    {
+      "id": "otaku",
+      "icon": "🎁",
+      "title": "덕질 투어",
+      "desc": "굿즈샵 돌고 가챠 한 판",
+      "cats": [
+        "goods"
+      ]
+    },
+    {
+      "id": "vintage",
+      "icon": "👕",
+      "title": "구제·소품 산책",
+      "desc": "빈티지 구경하다 소품샵까지",
+      "cats": [
+        "fashion",
+        "lifestyle"
+      ]
+    },
+    {
+      "id": "photo",
+      "icon": "📸",
+      "title": "사진 남기기",
+      "desc": "셀프사진, 이색 공간",
+      "tags": [
+        "사진 맛집"
+      ]
+    },
+    {
+      "id": "rain",
+      "icon": "☔",
+      "title": "비 와도 OK",
+      "desc": "실내에서 오래 놀기",
+      "tags": [
+        "비 오는 날"
+      ]
+    },
+    {
+      "id": "cheap",
+      "icon": "💸",
+      "title": "가볍게 놀기",
+      "desc": "부담 없는 가격대",
+      "quick": [
+        "cheap"
+      ]
+    },
+    {
+      "id": "night",
+      "icon": "🌙",
+      "title": "밤까지 놀기",
+      "desc": "22시 이후에도 여는 곳",
+      "quick": [
+        "late"
+      ]
+    },
+    {
+      "id": "hungry",
+      "icon": "🍽️",
+      "title": "배고플 때",
+      "desc": "한 끼 또는 디저트",
+      "cats": [
+        "food",
+        "dessert"
+      ]
+    },
+    {
+      "id": "limited",
+      "icon": "🔥",
+      "title": "지금만 볼 수 있는",
+      "desc": "기간 한정 전시·팝업",
+      "quick": [
+        "limited"
+      ]
+    }
+  ],
+  "tags": [
+    "실내",
+    "비 오는 날",
+    "저렴함",
+    "구경 위주",
+    "오래 머물기",
+    "짧게 들르기",
+    "예약 추천",
+    "웨이팅 있음",
+    "사진 맛집",
+    "친구끼리",
+    "가챠",
+    "애니·게임",
+    "빈티지",
+    "핸드메이드",
+    "기간 한정",
+    "팝업",
+    "전시",
+    "늦게까지",
+    "디저트 맛집",
+    "이색 공간"
+  ],
+  "zones": [
+    {
+      "id": "hongdae-station",
+      "label": "홍대입구역",
+      "center": [
+        37.5572,
+        126.9245
+      ],
+      "zoom": 17
+    },
+    {
+      "id": "yeonnam",
+      "label": "연남동",
+      "center": [
+        37.5615,
+        126.9228
+      ],
+      "zoom": 16
+    },
+    {
+      "id": "hongdae-main",
+      "label": "홍대 정문·놀이터",
+      "center": [
+        37.5517,
+        126.923
+      ],
+      "zoom": 16
+    },
+    {
+      "id": "sangsu-hapjeong",
+      "label": "상수·합정",
+      "center": [
+        37.549,
+        126.9175
+      ],
+      "zoom": 16
+    }
+  ],
+  "startPoints": [
+    {
+      "id": "hongik-9",
+      "label": "홍대입구역 9번 출구",
+      "lat": 37.55604,
+      "lng": 126.922922
+    },
+    {
+      "id": "hongik-3",
+      "label": "홍대입구역 3번 출구 (연남)",
+      "lat": 37.558512,
+      "lng": 126.925302
+    },
+    {
+      "id": "hongik-8",
+      "label": "홍대입구역 8번 출구",
+      "lat": 37.556889,
+      "lng": 126.924123
+    },
+    {
+      "id": "hapjeong-3",
+      "label": "합정역 3번 출구",
+      "lat": 37.550787,
+      "lng": 126.915912
+    },
+    {
+      "id": "sangsu-1",
+      "label": "상수역 1번 출구",
+      "lat": 37.547874,
+      "lng": 126.922829
+    }
+  ],
+  "defaultStartPoint": "hongik-9",
+  "walk": {
+    "metersPerMinute": 70,
+    "detour": 1.3,
+    "nearbyMaxMinutes": 15,
+    "rings": [
+      5,
+      10
+    ]
+  },
+  "map": {
+    "center": [
+      37.5565,
+      126.922
+    ],
+    "zoom": 15,
+    "minZoom": 13,
+    "maxZoom": 19,
+    "bounds": [
+      [
+        37.51,
+        126.87
+      ],
+      [
+        37.6,
+        126.98
+      ]
+    ],
+    "tiles": [
+      {
+        "id": "osm",
+        "name": "OpenStreetMap 기본 지도",
+        "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "subdomains": "",
+        "maxNativeZoom": 19,
+        "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> 기여자"
+      },
+      {
+        "id": "carto",
+        "name": "CARTO Voyager (OpenStreetMap 기반)",
+        "url": "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        "subdomains": "abcd",
+        "maxNativeZoom": 20,
+        "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> 기여자 &copy; <a href=\"https://carto.com/attributions\" target=\"_blank\" rel=\"noopener\">CARTO</a>"
+      }
+    ]
+  },
+  "storageKeys": {
+    "saved": "hongdae-map:saved:v1",
+    "start": "hongdae-map:start:v1"
+  },
+  "reportUrl": null
+};
+
+/* 홍대 느슨지도 장소 데이터.
+   "window.HM_PLACES = " 뒤는 순수 JSON 이에요. 장소를 고칠 땐 이 파일만 수정하면 돼요.
+   필드 설명: README.md 의 "장소 데이터 고치기" */
+window.HM_PLACES = {
+  "meta": {
+    "version": "0.2",
+    "researchedAt": "2026-10-16",
+    "editedAt": "2026-11-02",
+    "note": "장소 조사는 2026-10-16 웹 검색 기준. 현장·전화 확인은 하지 않았어요.",
+    "changes": [
+      "툭툭누들타이: 데이터는 보존, 기본 목록에서 숨김 (운영 미확인)",
+      "장소별 issues(확인이 필요한 점) 추가 — 인계 자료 03·07 문서의 충돌 메모 기준",
+      "수동 추정 좌표 4곳에 location.manual 표시",
+      "가샤폰 hoursNote 근거 오류 정정, 짱오락실(한 줄 이유 포함)·상상마당 설명 완화, 레이어드 미확인 인스타 링크 제거",
+      "카페 공명 홍대점 후기에 다른 지점 혼용 안내 추가"
+    ]
+  },
+  "places": [
+    {
+      "id": "animate-hongdae",
+      "name": "애니메이트 홍대점",
+      "shortName": "애니메이트",
+      "searchName": "애니메이트 홍대점",
+      "aliases": [
+        "animate",
+        "애니굿즈",
+        "AK플라자"
+      ],
+      "primaryCategory": "goods",
+      "tags": [
+        "실내",
+        "비 오는 날",
+        "구경 위주",
+        "애니·게임",
+        "오래 머물기"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 양화로 188 AK PLAZA 홍대 5층",
+      "location": {
+        "lat": 37.55774581,
+        "lng": 126.92649833,
+        "accuracy": "exact",
+        "source": "가챠맵 카카오맵 좌표 (AK PLAZA 홍대)"
+      },
+      "nearestExit": "홍대입구역 4번 출구 도보 2분",
+      "oneLineReason": "애니·게임 공식 굿즈가 한 층에 모인 홍대 덕질의 출발점",
+      "description": "AK PLAZA 홍대 5층의 대형 애니메이션 굿즈숍이에요. 책·음반부터 아크릴 스탠드, 캔뱃지, 피규어까지 작품별·게임별로 정리돼 있어 처음 가도 찾기 쉬워요. 바로 아래 4층 반다이 가샤폰과 묶어 돌기 좋아요.",
+      "priceLevel": 2,
+      "priceNote": "아크릴 스탠드 1~2만원대, 캔뱃지 5천원부터 (2025 후기)",
+      "stayMinutes": [
+        30,
+        60
+      ],
+      "openingHours": {
+        "mon": "11:00-21:40",
+        "tue": "11:00-21:40",
+        "wed": "11:00-21:40",
+        "thu": "11:00-21:40",
+        "fri": "11:00-21:40",
+        "sat": "10:30-21:40",
+        "sun": "10:30-21:40"
+      },
+      "hoursNote": "공휴일은 10:30 오픈 (공식 X 기준)",
+      "floor": "AK PLAZA 5층",
+      "entranceTip": "AK PLAZA 안에서 5층으로. 애니메이트 카페와는 층 반대편이에요.",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null,
+        "x": "https://x.com/animate_hongdae"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "애니메이트 서울홍대점 공식 X",
+          "url": "https://x.com/animate_hongdae",
+          "type": "sns",
+          "note": "영업시간 11:00~21:40, 주말·공휴일 10:30 오픈"
+        },
+        {
+          "label": "가챠맵 매장 정보",
+          "url": "https://www.gachamap.co.kr/store/9ea5b2a9-7acd-4087-ad22-647b5d8228e1",
+          "type": "aggregator",
+          "note": "주소, 출구, 좌표, 취급 가챠"
+        },
+        {
+          "label": "애니메이트 홍대점 방문 후기 (2025)",
+          "url": "https://ghostweb.tistory.com/2197",
+          "type": "blog",
+          "note": "게임별 굿즈 구성과 가격대"
+        }
+      ],
+      "review": {
+        "pros": [
+          "애니·게임 굿즈 규모가 홍대에서 손꼽힘",
+          "게임·작품별로 매대가 나뉘어 찾기 쉬움",
+          "4층 가샤폰·팝업과 한 건물에서 이어 보기 좋음"
+        ],
+        "cons": [
+          "주말엔 사람이 많이 몰림",
+          "인기 굿즈는 빨리 빠져 오픈 직후가 유리"
+        ],
+        "goodFor": [
+          "애니·서브컬처 게임 팬",
+          "홍대 덕질 투어를 처음 하는 사람"
+        ],
+        "practical": [
+          "아크릴 스탠드 1~2만원대, 캔뱃지 5천원부터"
+        ],
+        "sourceCount": 4,
+        "sources": [
+          {
+            "label": "홍대 굿즈샵 정리 (2025)",
+            "url": "https://think2918.tistory.com/760"
+          },
+          {
+            "label": "애니메이트 홍대점 방문 후기 (2025)",
+            "url": "https://ghostweb.tistory.com/2197"
+          },
+          {
+            "label": "애니메이트 홍대점 방문 후기 (2024)",
+            "url": "https://clean-white.tistory.com/entry/%ED%99%8D%EB%8C%80-%EC%95%A0%EB%8B%88%EB%A9%94%EC%9D%B4%ED%8A%B8-%ED%99%8D%EB%8C%80%EC%A0%90-%EB%B0%A9%EB%AC%B8-%ED%9B%84%EA%B8%B0"
+          },
+          {
+            "label": "트립닷컴 AK플라자 홍대점 모음",
+            "url": "https://kr.trip.com/moments/theme/poi-ak-plaza-hongdae-144084158-store-993139"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": "high",
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": "high"
+      },
+      "details": {
+        "works": [
+          "원신",
+          "붕괴: 스타레일",
+          "명조",
+          "주술회전",
+          "귀멸의 칼날",
+          "하이큐!!"
+        ],
+        "gachaPayment": null
+      },
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "gashapon-street-ak",
+      "name": "반다이 가샤폰 스트리트 홍대AK점",
+      "shortName": "가샤폰 스트리트",
+      "searchName": "가샤폰 스트리트 홍대",
+      "aliases": [
+        "반다이",
+        "가샤폰",
+        "정가 가챠"
+      ],
+      "primaryCategory": "goods",
+      "tags": [
+        "실내",
+        "가챠",
+        "애니·게임",
+        "짧게 들르기",
+        "저렴함"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 양화로 188 AK PLAZA 홍대 4층",
+      "location": {
+        "lat": 37.55774581,
+        "lng": 126.92649833,
+        "accuracy": "exact",
+        "source": "가챠맵 카카오맵 좌표 (AK PLAZA 홍대)"
+      },
+      "nearestExit": "홍대입구역 4번 출구 도보 1분",
+      "oneLineReason": "반다이 공식 가챠를 정가로, 애니메이트 바로 아래층",
+      "description": "AK PLAZA 4층의 반다이 공식 가챠 매장이에요. 가챠맵 가격 비교에서 이 매장이 최저가인 상품이 많고, 뽑은 캡슐을 올려놓고 찍는 촬영 부스도 있어요.",
+      "priceLevel": 1,
+      "priceNote": "가챠 1회 대부분 3,000~7,000원 (가챠맵)",
+      "stayMinutes": [
+        10,
+        30
+      ],
+      "openingHours": {
+        "mon": "10:30-22:00",
+        "tue": "10:30-22:00",
+        "wed": "10:30-22:00",
+        "thu": "10:30-22:00",
+        "fri": "10:30-22:00",
+        "sat": "10:30-22:00",
+        "sun": "10:30-22:00"
+      },
+      "hoursNote": "AK PLAZA 운영시간 기준. 매장 자체 시간은 공식 확인 전이에요",
+      "floor": "AK PLAZA 4층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "가챠맵 매장 정보",
+          "url": "https://www.gachamap.co.kr/store/d1ef86a1-01f5-4342-ae63-59a8825e6c94",
+          "type": "aggregator",
+          "note": "주소, 좌표, 가격 비교, 다음 날 10:30 오픈 표시"
+        },
+        {
+          "label": "트립닷컴 AK플라자 홍대점",
+          "url": "https://kr.trip.com/moments/theme/poi-ak-plaza-hongdae-144084158-store-993139",
+          "type": "map",
+          "note": "AK플라자 운영 10:30~22:00"
+        },
+        {
+          "label": "가샤폰 스트리트 홍대점 방문 후기 (2024)",
+          "url": "https://clean-white.tistory.com/entry/%ED%99%8D%EB%8C%80-%EB%B0%98%EB%8B%A4%EC%9D%B4-%EA%B0%80%EC%83%A4%ED%8F%B0-%EC%8A%A4%ED%8A%B8%EB%A6%AC%ED%8A%B8-%ED%99%8D%EB%8C%80%EC%A0%90-%EB%B0%A9%EB%AC%B8-%ED%9B%84%EA%B8%B0",
+          "type": "blog",
+          "note": "4층 위치, 촬영 부스"
+        }
+      ],
+      "review": {
+        "pros": [
+          "반다이 정가라 다른 가챠샵보다 싼 상품이 많음",
+          "뽑은 상품 촬영용 부스가 있음",
+          "5층 애니메이트와 같이 돌기 편함"
+        ],
+        "cons": [
+          "상품 구성은 다른 반다이 매장과 비슷하다는 평"
+        ],
+        "goodFor": [
+          "가볍게 가챠 몇 판 돌리고 싶은 사람"
+        ],
+        "practical": [
+          "가챠 1회 3,000~7,000원대"
+        ],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "가챠맵 가격 비교",
+            "url": "https://www.gachamap.co.kr/store/d1ef86a1-01f5-4342-ae63-59a8825e6c94"
+          },
+          {
+            "label": "가샤폰 스트리트 홍대점 방문 후기 (2024)",
+            "url": "https://clean-white.tistory.com/entry/%ED%99%8D%EB%8C%80-%EB%B0%98%EB%8B%A4%EC%9D%B4-%EA%B0%80%EC%83%A4%ED%8F%B0-%EC%8A%A4%ED%8A%B8%EB%A6%AC%ED%8A%B8-%ED%99%8D%EB%8C%80%EC%A0%90-%EB%B0%A9%EB%AC%B8-%ED%9B%84%EA%B8%B0"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "works": [
+          "산리오",
+          "짱구는 못말려",
+          "원피스",
+          "건담",
+          "명탐정 코난"
+        ],
+        "gachaPayment": null
+      },
+      "issues": [
+        "오픈 시각을 공식 출처로 확인하지 못했어요. (AK PLAZA 운영시간 기준)"
+      ],
+      "listed": true
+    },
+    {
+      "id": "js-store",
+      "name": "제이에스스토어 홍대점",
+      "shortName": "JS스토어",
+      "searchName": "제이에스스토어 홍대점",
+      "aliases": [
+        "JS STORE",
+        "피규어",
+        "쿠지",
+        "제일복권"
+      ],
+      "primaryCategory": "goods",
+      "tags": [
+        "실내",
+        "애니·게임",
+        "가챠",
+        "구경 위주"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 와우산로29길 48-24 1층",
+      "location": {
+        "lat": 37.55630663,
+        "lng": 126.92808588,
+        "accuracy": "exact",
+        "source": "가챠맵 카카오맵 좌표"
+      },
+      "nearestExit": "홍대입구역 6·7번 출구 도보 1분",
+      "oneLineReason": "벽 한 면이 피규어, 피규어·쿠지 구경하기 좋은 대형 매장",
+      "description": "피규어와 굿즈 비중이 큰 대형 매장이에요. 진열장 위쪽엔 전시용 피규어가 있어 구경만 해도 재미있고, 가챠 225종·쿠지 48종 정도를 함께 다뤄요(가챠맵 집계).",
+      "priceLevel": 2,
+      "priceNote": "쿠지 1회 1만~1만5천원, 가챠 3,000~8,000원 (가챠맵)",
+      "stayMinutes": [
+        20,
+        40
+      ],
+      "openingHours": {
+        "mon": "12:00-21:00",
+        "tue": "12:00-21:00",
+        "wed": "12:00-21:00",
+        "thu": "12:00-21:00",
+        "fri": "12:00-21:00",
+        "sat": "12:00-21:00",
+        "sun": "12:00-21:00"
+      },
+      "hoursNote": "마감 시간은 출처에 따라 20:45~21:00",
+      "floor": "1층",
+      "entranceTip": "입구가 건물 오른편에 있어요 (방문 후기).",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://www.instagram.com/jsstore_hongdae/"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "가챠맵 매장 정보",
+          "url": "https://www.gachamap.co.kr/store/e2d96aca-6156-4c32-856d-95f0826a4c35",
+          "type": "aggregator",
+          "note": "주소, 좌표, 다음 날 12시 오픈 표시, 운영자 코멘트"
+        },
+        {
+          "label": "트리플 장소 정보",
+          "url": "https://triple.guide/attractions/e34a094f-d52c-4ef3-8acc-48ac775602f4",
+          "type": "map",
+          "note": "12:00~21:00"
+        },
+        {
+          "label": "방문 후기 (2024)",
+          "url": "https://m.blog.naver.com/fir0616/223512795640",
+          "type": "blog",
+          "note": "입구 위치, 12:00~20:45"
+        }
+      ],
+      "review": {
+        "pros": [
+          "피규어 전시·판매 규모가 큼",
+          "가격이 괜찮다는 평이 여럿",
+          "지상층이라 넓고 쾌적하다는 후기"
+        ],
+        "cons": [
+          "가챠보다 피규어·굿즈 비중이 높음",
+          "입구가 건물 옆이라 지나치기 쉬움"
+        ],
+        "goodFor": [
+          "피규어 수집가",
+          "애니를 잘 몰라도 산리오·치이카와 구경하고 싶은 친구"
+        ],
+        "practical": [
+          "쿠지 1회 약 1만~1만5천원"
+        ],
+        "sourceCount": 4,
+        "sources": [
+          {
+            "label": "피규어샵 방문 후기",
+            "url": "https://blog.naver.com/zerotoo02/223669166890"
+          },
+          {
+            "label": "방문 후기 (2024)",
+            "url": "https://m.blog.naver.com/fir0616/223512795640"
+          },
+          {
+            "label": "홍대 피규어 사는 곳 (2025)",
+            "url": "https://brunch.co.kr/@topasvga/4684"
+          },
+          {
+            "label": "가챠맵 운영자 코멘트",
+            "url": "https://www.gachamap.co.kr/store/e2d96aca-6156-4c32-856d-95f0826a4c35"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": "high",
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "works": [
+          "포켓몬",
+          "치이카와",
+          "산리오",
+          "드래곤볼",
+          "봇치 더 록!"
+        ],
+        "gachaPayment": null
+      },
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "space-urara",
+      "name": "스페이스 우라라 홍대점",
+      "shortName": "스페이스 우라라",
+      "searchName": "스페이스 우라라 홍대점",
+      "aliases": [
+        "우라라",
+        "쿠지",
+        "제일복권"
+      ],
+      "primaryCategory": "goods",
+      "tags": [
+        "실내",
+        "애니·게임",
+        "가챠",
+        "저렴함",
+        "짧게 들르기"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 와우산로29길 48-29 지하 1층",
+      "location": {
+        "lat": 37.55625803,
+        "lng": 126.92772717,
+        "accuracy": "exact",
+        "source": "가챠맵 카카오맵 좌표"
+      },
+      "nearestExit": "홍대입구역 7번 출구 도보 2분",
+      "oneLineReason": "쿠지(제일복권)가 싼 편, JS스토어 바로 옆 지하",
+      "description": "가챠와 쿠지, 피규어를 함께 파는 지하 매장이에요. 가챠맵 비교 기준 쿠지·가챠 상당수가 홍대 최저가로 집계돼 있어요. 제이에스스토어와 같은 골목이라 연달아 들르기 좋아요.",
+      "priceLevel": 1,
+      "priceNote": "쿠지 11,900~14,900원, 가챠 3,500~5,900원 (가챠맵)",
+      "stayMinutes": [
+        10,
+        30
+      ],
+      "openingHours": null,
+      "hoursNote": "11시 오픈 (가챠맵 기준). 마감 시간은 아직 확인하지 못했어요",
+      "floor": "지하 1층",
+      "entranceTip": "지하 매장이라 계단 입구를 찾아 내려가야 해요.",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://instagram.com/space_urara"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "가챠맵 매장 정보",
+          "url": "https://www.gachamap.co.kr/store/39ddd44b-352e-410f-8799-b8b38066ab67",
+          "type": "aggregator",
+          "note": "주소, 좌표, 가격 비교, 11시 오픈"
+        },
+        {
+          "label": "방문 후기",
+          "url": "https://blog.naver.com/dorothy3560/223747323791",
+          "type": "blog",
+          "note": "쿠지·피규어 구성"
+        }
+      ],
+      "review": {
+        "pros": [
+          "쿠지 종류가 많고 가격이 낮은 편",
+          "피규어도 함께 구경 가능"
+        ],
+        "cons": [],
+        "goodFor": [
+          "쿠지 한 판 뽑아보고 싶은 사람"
+        ],
+        "practical": [
+          "쿠지 1만원대 초중반, 가챠 3~6천원"
+        ],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "가챠맵 가격 비교",
+            "url": "https://www.gachamap.co.kr/store/39ddd44b-352e-410f-8799-b8b38066ab67"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/dorothy3560/223747323791"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "works": [
+          "원피스",
+          "헌터×헌터",
+          "하이큐!!",
+          "주술회전",
+          "장송의 프리렌"
+        ],
+        "gachaPayment": null
+      },
+      "issues": [
+        "마감 시간이 확인되지 않았고, 문을 연 시기도 출처마다 달라요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "shiro-store",
+      "name": "시로상점·시로가챠",
+      "shortName": "시로상점",
+      "searchName": "시로상점 홍대",
+      "aliases": [
+        "시로가챠",
+        "shiro"
+      ],
+      "primaryCategory": "goods",
+      "tags": [
+        "실내",
+        "가챠",
+        "애니·게임",
+        "구경 위주"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 와우산로33길 23 (시로가챠 2층, 시로상점 맞은편 지하 1층)",
+      "location": {
+        "lat": 37.55543941,
+        "lng": 126.92896358,
+        "accuracy": "exact",
+        "source": "가챠맵 카카오맵 좌표 (시로가챠)"
+      },
+      "nearestExit": "홍대입구역 7번 출구 도보 5분",
+      "oneLineReason": "굿즈 매장과 가챠 매장이 마주 보는, 신상이 빠른 곳",
+      "description": "굿즈 중심의 시로상점(지하 1층)과 가챠 중심의 시로가챠(맞은편 2층)가 마주 보고 있어요. 공식 X에 신상 입고 소식을 자주 올리고, 가챠는 중복을 줄이는 스티커 시스템이 있어요(가챠맵 기준).",
+      "priceLevel": 2,
+      "priceNote": "가챠 4,000~8,500원 (가챠맵)",
+      "stayMinutes": [
+        20,
+        40
+      ],
+      "openingHours": {
+        "mon": "11:00-20:00",
+        "tue": "11:00-20:00",
+        "wed": "11:00-20:00",
+        "thu": "11:00-20:00",
+        "fri": "11:00-20:00",
+        "sat": "11:00-20:00",
+        "sun": "11:00-20:00"
+      },
+      "hoursNote": "시로가챠 기준 (가챠맵). 시로상점 시간은 다를 수 있어요",
+      "floor": "시로가챠 2층 · 시로상점 지하 1층",
+      "entranceTip": "두 매장이 길을 사이에 두고 마주 보고 있어요.",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://instagram.com/shirostore_hongdae",
+        "x": "https://x.com/shirostore_hd"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "가챠맵 매장 정보",
+          "url": "https://www.gachamap.co.kr/store/68790b26-8e26-4804-bbe9-ca3e62345ad7",
+          "type": "aggregator",
+          "note": "주소, 좌표, 11:00~20:00, 중복 방지 스티커"
+        },
+        {
+          "label": "시로상점 공식 X",
+          "url": "https://x.com/shirostore_hd",
+          "type": "sns",
+          "note": "7번 출구 도보 5분, 입고 안내"
+        },
+        {
+          "label": "방문 후기",
+          "url": "https://blog.naver.com/doldao/223829338444",
+          "type": "blog",
+          "note": "매장 분위기"
+        }
+      ],
+      "review": {
+        "pros": [
+          "진열이 잘 돼 있어 구경하는 재미가 있음",
+          "매장이 넓고 쾌적한 편",
+          "신상 가챠가 빨리 들어옴"
+        ],
+        "cons": [
+          "역에서 5분 정도 걸어야 함"
+        ],
+        "goodFor": [
+          "신상 가챠를 노리는 사람"
+        ],
+        "practical": [
+          "굿즈(지하)와 가챠(2층) 매장이 따로라 둘 다 들르기"
+        ],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/doldao/223829338444"
+          },
+          {
+            "label": "가챠맵 매장 정보",
+            "url": "https://www.gachamap.co.kr/store/68790b26-8e26-4804-bbe9-ca3e62345ad7"
+          },
+          {
+            "label": "시로상점 공식 X 입고 안내",
+            "url": "https://x.com/shirostore_hd"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "works": [
+          "치이카와",
+          "주술회전",
+          "산리오",
+          "짱구는 못말려",
+          "포켓몬"
+        ],
+        "gachaPayment": null
+      },
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "brothergoods-station",
+      "name": "브라더굿즈 가챠샵 홍대입구역점",
+      "shortName": "브라더굿즈",
+      "searchName": "브라더굿즈 가챠샵 홍대입구역점",
+      "aliases": [
+        "브라더굿즈",
+        "쿠지"
+      ],
+      "primaryCategory": "goods",
+      "tags": [
+        "실내",
+        "가챠",
+        "짧게 들르기",
+        "늦게까지"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 홍익로6길 30 1층·지하 1층",
+      "location": {
+        "lat": 37.5556332,
+        "lng": 126.92346531,
+        "accuracy": "exact",
+        "source": "가챠맵 카카오맵 좌표"
+      },
+      "nearestExit": "홍대입구역 9번 출구 도보 1분",
+      "oneLineReason": "9번 출구 1분, 밤늦게까지 가챠 돌릴 수 있는 곳",
+      "description": "1층은 가챠, 지하에는 가챠와 쿠지가 있어요. 역에서 가장 가까운 가챠샵 중 하나라 약속 시간 전에 들르기 좋아요. 같은 브랜드의 홍대점(다른 매장)과 헷갈리지 마세요.",
+      "priceLevel": 1,
+      "priceNote": "가챠 4,000~8,000원, 쿠지 1만원대 (가챠맵)",
+      "stayMinutes": [
+        10,
+        20
+      ],
+      "openingHours": null,
+      "hoursNote": "자정까지(가챠맵) 또는 24시간(2025 후기)으로 정보가 엇갈려요. 늦은 시간엔 확인하고 가세요",
+      "floor": "1층 · 지하 1층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "가챠맵 매장 정보",
+          "url": "https://www.gachamap.co.kr/store/3325fbe2-5c54-4c00-a538-b6f22b633c69",
+          "type": "aggregator",
+          "note": "주소, 좌표, 자정까지, 홍대점과 별개"
+        },
+        {
+          "label": "방문 후기 (2025)",
+          "url": "https://m.blog.naver.com/dulgi_bae/224021285241",
+          "type": "blog",
+          "note": "24시간 영업이라는 기록"
+        }
+      ],
+      "review": {
+        "pros": [
+          "역 바로 앞이라 들르기 쉬움",
+          "늦은 시간까지 운영"
+        ],
+        "cons": [
+          "같은 브랜드 홍대점보다 작은 매장",
+          "이름이 비슷한 다른 매장과 헷갈리기 쉬움"
+        ],
+        "goodFor": [
+          "약속 기다리며 잠깐 들를 사람"
+        ],
+        "practical": [],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "가챠맵 매장 정보",
+            "url": "https://www.gachamap.co.kr/store/3325fbe2-5c54-4c00-a538-b6f22b633c69"
+          },
+          {
+            "label": "방문 후기 (2025)",
+            "url": "https://m.blog.naver.com/dulgi_bae/224021285241"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "works": [
+          "나루토",
+          "나의 히어로 아카데미아",
+          "단다단",
+          "치이카와",
+          "마인크래프트"
+        ],
+        "gachaPayment": null
+      },
+      "issues": [
+        "영업시간이 출처마다 달라요 (자정 마감 / 24시간)."
+      ],
+      "listed": true
+    },
+    {
+      "id": "root-hongdae",
+      "name": "루트 홍대",
+      "shortName": "루트 홍대",
+      "searchName": "루트홍대",
+      "aliases": [
+        "ROOT",
+        "구제",
+        "창고형 빈티지"
+      ],
+      "primaryCategory": "fashion",
+      "tags": [
+        "실내",
+        "빈티지",
+        "구경 위주",
+        "오래 머물기",
+        "늦게까지",
+        "저렴함"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 양화로 140 지하 1층",
+      "location": {
+        "lat": 37.554905,
+        "lng": 126.922122,
+        "accuracy": "exact",
+        "source": "Google 지도 좌표 (Wanderlog 경유)"
+      },
+      "nearestExit": null,
+      "oneLineReason": "250평 창고형 빈티지, 새벽 2시까지 여는 홍대 최대급 구제샵",
+      "description": "공식 계정 기준 250평 규모의 창고형 빈티지샵이에요. 아우터·데님부터 원피스, 액세서리까지 종류가 많고 매주 신상이 들어와요.",
+      "priceLevel": 1,
+      "priceNote": "5,000원부터 시작하는 상품도 있음 (오픈 당시 안내)",
+      "stayMinutes": [
+        40,
+        90
+      ],
+      "openingHours": {
+        "mon": "10:00-02:00",
+        "tue": "10:00-02:00",
+        "wed": "10:00-02:00",
+        "thu": "10:00-02:00",
+        "fri": "10:00-02:00",
+        "sat": "10:00-02:00",
+        "sun": "10:00-02:00"
+      },
+      "hoursNote": "365일 영업 (공식 인스타)",
+      "floor": "지하 1층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://www.instagram.com/root.hongdae"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "루트 홍대 공식 인스타그램",
+          "url": "https://www.instagram.com/root.hongdae",
+          "type": "sns",
+          "note": "양화로 140 B1, 10AM~2AM 365일, 2026.09 게시물"
+        },
+        {
+          "label": "Wanderlog (구글 리뷰 요약)",
+          "url": "https://wanderlog.com/ko/place/details/9883813/%EB%A3%A8%ED%8A%B8%ED%99%8D%EB%8C%80",
+          "type": "map",
+          "note": "구글 좌표, 리뷰 경향"
+        }
+      ],
+      "review": {
+        "pros": [
+          "매장이 매우 넓어 2시간도 금방 간다는 후기",
+          "가격이 합리적이고 브랜드 옷도 섞여 있음",
+          "탈의실이 많아 입어 보기 편함"
+        ],
+        "cons": [
+          "계산·할인 적용 응대에 대한 불만 후기도 일부 있음"
+        ],
+        "goodFor": [
+          "구제 입문자",
+          "오래 뒤적이며 보물찾기 좋아하는 친구"
+        ],
+        "practical": [
+          "구글 리뷰 3천 건 이상, 대부분 높은 평가 (Wanderlog 집계)"
+        ],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "Wanderlog 리뷰 요약 (구글 리뷰)",
+            "url": "https://wanderlog.com/ko/place/details/9883813/%EB%A3%A8%ED%8A%B8%ED%99%8D%EB%8C%80"
+          },
+          {
+            "label": "구제샵 매니저의 방문 후기",
+            "url": "https://blog.naver.com/idkw2w/223495799854"
+          },
+          {
+            "label": "홍대 빈티지 투어 후기",
+            "url": "https://blog.naver.com/afx1979/223956595244"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": "high",
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "styleKeywords": [
+          "아우터",
+          "데님",
+          "원피스",
+          "액세서리"
+        ]
+      },
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "vintage-santa",
+      "name": "빈티지산타 홍대",
+      "shortName": "빈티지산타",
+      "searchName": "빈티지산타 홍대",
+      "aliases": [
+        "vintage santa",
+        "구제",
+        "스트릿"
+      ],
+      "primaryCategory": "fashion",
+      "tags": [
+        "실내",
+        "빈티지",
+        "구경 위주",
+        "늦게까지"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 홍익로 19 지하 1층",
+      "location": {
+        "lat": 37.554132,
+        "lng": 126.922543,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)",
+        "note": "주소가 두 가지로 나와 홍익로 19 기준으로 표시했어요."
+      },
+      "nearestExit": null,
+      "oneLineReason": "스트릿 브랜드 구제가 모인 100평 규모 지하 빈티지샵",
+      "description": "슈프림, 폴로, 나이키, 칼하트 같은 스트릿·캐주얼 브랜드 구제가 많은 지하 매장이에요. 옷마다 가격표가 붙어 있어 점원 없이도 편하게 구경할 수 있어요.",
+      "priceLevel": 2,
+      "priceNote": "셔츠류 5만원 안팎 (2023 후기, 변동 가능)",
+      "stayMinutes": [
+        30,
+        60
+      ],
+      "openingHours": {
+        "mon": "11:00-23:00",
+        "tue": "11:00-23:00",
+        "wed": "11:00-23:00",
+        "thu": "11:00-23:00",
+        "fri": "11:00-24:00",
+        "sat": "11:00-24:00",
+        "sun": "11:00-23:00"
+      },
+      "hoursNote": "공식 인스타 기준",
+      "floor": "지하 1층",
+      "entranceTip": "계단으로 내려가는 지하 매장이에요.",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://www.instagram.com/vintage.santa/"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "빈티지산타 홍대 공식 인스타그램",
+          "url": "https://www.instagram.com/vintage.santa/",
+          "type": "sns",
+          "note": "홍익로19 B1, 11:00 오픈, 일~목 23시·금토 24시, 2026 게시물"
+        },
+        {
+          "label": "방문 후기 (2023)",
+          "url": "https://hanybuny.tistory.com/119",
+          "type": "blog",
+          "note": "규모, 가격대, 탈의실"
+        }
+      ],
+      "review": {
+        "pros": [
+          "매장이 넓고 종류별로 잘 정리돼 있음",
+          "가격표가 붙어 있어 부담 없이 구경",
+          "스트릿·힙합 스타일 아이템이 많음"
+        ],
+        "cons": [
+          "구제치고 가격대가 있는 편",
+          "주말엔 붐빔"
+        ],
+        "goodFor": [
+          "스트릿 브랜드 구제를 찾는 사람"
+        ],
+        "practical": [],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "방문 후기 (2023)",
+            "url": "https://hanybuny.tistory.com/119"
+          },
+          {
+            "label": "공식 인스타그램 게시물",
+            "url": "https://www.instagram.com/vintage.santa/"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": "high",
+        "priceBurden": "mid",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "styleKeywords": [
+          "스트릿",
+          "브랜드 구제",
+          "힙합"
+        ]
+      },
+      "issues": [
+        "주소가 두 가지로 나와요: 홍익로 19 B1 / 양화로23길 28 B1. 지도는 앞의 주소 기준이에요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "aland-hongdae",
+      "name": "에이랜드 홍대점",
+      "shortName": "에이랜드",
+      "searchName": "에이랜드 홍대점",
+      "aliases": [
+        "A LAND",
+        "편집숍",
+        "디자이너 브랜드"
+      ],
+      "primaryCategory": "fashion",
+      "tags": [
+        "실내",
+        "구경 위주",
+        "비 오는 날",
+        "오래 머물기"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 양화로16길 29 (지하 1층~5층)",
+      "location": {
+        "lat": 37.553192,
+        "lng": 126.921168,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": null,
+      "oneLineReason": "국내 디자이너 브랜드를 지하 1층부터 5층까지 한 번에",
+      "description": "국내 신진·디자이너 브랜드 의류와 잡화를 모은 편집숍이에요. 층이 많아 비 오는 날 실내에서 쇼핑하며 시간 보내기 좋아요. 한국관광공사에 택스리펀 매장으로 등록돼 있어요.",
+      "priceLevel": 2,
+      "priceNote": null,
+      "stayMinutes": [
+        30,
+        60
+      ],
+      "openingHours": {
+        "mon": "12:00-22:00",
+        "tue": "12:00-22:00",
+        "wed": "12:00-22:00",
+        "thu": "12:00-22:00",
+        "fri": "12:00-22:00",
+        "sat": "12:00-22:00",
+        "sun": "12:00-22:00"
+      },
+      "hoursNote": "한국관광공사 기준. 11:00 오픈으로 안내한 출처도 있어요. 설·추석 휴무",
+      "floor": "지하 1층~5층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": "카드 가능 (관광공사 정보)",
+      "links": {
+        "official": "https://a-land.co.kr/store/hongdae/",
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "VISITKOREA (한국관광공사)",
+          "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=145842",
+          "type": "tourism",
+          "note": "B1~5F, 12:00~22:00, 명절 휴무"
+        },
+        {
+          "label": "트립인포",
+          "url": "https://www.tripinfo.co.kr/info.html?content_type_id=38&content_id=2893937",
+          "type": "map",
+          "note": "12:00~22:00, 9번 출구 도보 7분"
+        },
+        {
+          "label": "에이랜드 공식 매장 페이지",
+          "url": "https://a-land.co.kr/store/hongdae/",
+          "type": "official",
+          "note": "조사 시점 접속 오류로 내용 확인 못함"
+        }
+      ],
+      "review": null,
+      "traits": {
+        "browse": "high",
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "styleKeywords": [
+          "디자이너 브랜드",
+          "캐주얼",
+          "잡화"
+        ]
+      },
+      "issues": [
+        "일요일 휴무 여부가 출처마다 달라요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "object-seogyo",
+      "name": "오브젝트 서교점",
+      "shortName": "오브젝트",
+      "searchName": "오브젝트 서교점",
+      "aliases": [
+        "object",
+        "소품샵",
+        "문구",
+        "최고심"
+      ],
+      "primaryCategory": "lifestyle",
+      "tags": [
+        "실내",
+        "구경 위주",
+        "전시",
+        "핸드메이드"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 와우산로35길 13",
+      "location": {
+        "lat": 37.556214,
+        "lng": 126.92903,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (도로 단위)",
+        "note": "도로 단위 근사 위치라 실제 매장과 수십 m 다를 수 있어요."
+      },
+      "nearestExit": null,
+      "oneLineReason": "국내 작가 소품과 자주 바뀌는 캐릭터 전시를 함께 보는 곳",
+      "description": "국내 소규모 브랜드·작가의 문구, 생활소품, 책을 모은 셀렉트숍이에요. 한 층은 작가 협업 전시·팝업 공간이라 갈 때마다 볼거리가 바뀌어요.",
+      "priceLevel": 2,
+      "priceNote": "엽서·스티커 2~3천원대, 키링 7천원대 (공식 온라인몰)",
+      "stayMinutes": [
+        30,
+        60
+      ],
+      "openingHours": {
+        "mon": "11:00-21:00",
+        "tue": "11:00-21:00",
+        "wed": "11:00-21:00",
+        "thu": "11:00-21:00",
+        "fri": "11:00-21:00",
+        "sat": "11:00-21:00",
+        "sun": "11:00-21:00"
+      },
+      "hoursNote": "현재 전시 운영시간(공식) 기준. 매장은 12:00 오픈으로 안내한 출처도 있어요",
+      "floor": null,
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": "https://insideobject.com/",
+        "instagram": "https://www.instagram.com/insideobject/"
+      },
+      "events": [
+        {
+          "title": "소프트썸네일 〈Little Eyes, The Town〉",
+          "kind": "전시",
+          "where": "서교점",
+          "from": "2026-10-01",
+          "until": "2026-11-11",
+          "hours": "매일 11:00~21:00",
+          "url": "https://insideobject.com/object/exhibition/seogyo/1f/softthumbnail.html"
+        }
+      ],
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "오브젝트 공식 전시 페이지",
+          "url": "https://insideobject.com/object/exhibition/seogyo/1f/softthumbnail.html",
+          "type": "official",
+          "note": "2026.10.01~11.11, 매일 11:00~21:00"
+        },
+        {
+          "label": "오브젝트 공식몰",
+          "url": "https://insideobject.com/",
+          "type": "official",
+          "note": "주소 와우산로35길 13, 상품 가격"
+        },
+        {
+          "label": "책방지도",
+          "url": "https://www.bookshopmap.com/map/object_hongdae",
+          "type": "map",
+          "note": "12:00~22:00 (예전 정보)"
+        }
+      ],
+      "review": {
+        "pros": [
+          "선물용 소품 고르기 좋다는 평이 많음",
+          "전시·팝업이 자주 바뀌어 다시 갈 이유가 있음",
+          "자체 제작 다이어리·노트가 인기"
+        ],
+        "cons": [
+          "전시 기간엔 전시층이 붐빔"
+        ],
+        "goodFor": [
+          "다꾸·문구 좋아하는 친구",
+          "선물 사러 가는 날"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "여행톡톡 소품샵 추천",
+            "url": "https://www.tourtoctoc.com/news/articleView.html?idxno=2703"
+          },
+          {
+            "label": "방문 후기 (2023)",
+            "url": "https://come-out-play.tistory.com/98"
+          },
+          {
+            "label": "방문 후기 (2021)",
+            "url": "https://belifgd.tistory.com/entry/%EC%98%A4%EB%B8%8C%EC%A0%9D%ED%8A%B8-%EC%84%9C%EA%B5%90%EC%A0%90-%EC%86%8C%EA%B0%9C-%EB%B0%8F-%EC%A0%84%EA%B5%AD-%EB%A7%A4%EC%9E%A5-%EC%A0%95%EB%B3%B4"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": "high",
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {},
+      "issues": [
+        "오픈 시각이 출처마다 달라요 (11시 / 12시)."
+      ],
+      "listed": true
+    },
+    {
+      "id": "muumuu-yeonnam",
+      "name": "무유무유 연남점",
+      "shortName": "무유무유",
+      "searchName": "무유무유 연남",
+      "aliases": [
+        "muu muu",
+        "다꾸",
+        "스티커",
+        "소품샵"
+      ],
+      "primaryCategory": "lifestyle",
+      "tags": [
+        "실내",
+        "구경 위주",
+        "사진 맛집"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 성미산로 190-4 102호",
+      "location": {
+        "lat": 37.562843,
+        "lng": 126.926049,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": null,
+      "oneLineReason": "다꾸 스티커와 캐릭터 소품이 가득한 연남 대표 소품샵",
+      "description": "스티커·문구 같은 다꾸 아이템과 캐릭터 소품, 향수까지 파는 소품샵이에요. 독점 디자인 상품이 많고 매장 곳곳이 사진 찍기 좋게 꾸며져 있어요.",
+      "priceLevel": null,
+      "priceNote": null,
+      "stayMinutes": [
+        20,
+        40
+      ],
+      "openingHours": {
+        "mon": "11:00-20:00",
+        "tue": "11:00-20:00",
+        "wed": "11:00-20:00",
+        "thu": "11:00-20:00",
+        "fri": "11:00-20:00",
+        "sat": "11:00-20:00",
+        "sun": "11:00-20:00"
+      },
+      "hoursNote": "연중무휴 (공식 인스타)",
+      "floor": "1층 (102호)",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://www.instagram.com/muu_muu_yeonnam/"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "무유무유 연남점 공식 인스타그램",
+          "url": "https://www.instagram.com/muu_muu_yeonnam/",
+          "type": "sns",
+          "note": "성미산로 190-4 102호, 11:00~20:00 연중무휴"
+        }
+      ],
+      "review": {
+        "pros": [
+          "다꾸용 스티커·문구 종류가 많음",
+          "독점 디자인 상품이 있어 선물용으로 좋음",
+          "입구에서 향수 시향 가능"
+        ],
+        "cons": [
+          "주말엔 붐빔"
+        ],
+        "goodFor": [
+          "다꾸·스티커 좋아하는 친구"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "방문 후기 (2024)",
+            "url": "https://namooya3.tistory.com/95"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://m.blog.naver.com/title15/223471076388"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://m.blog.naver.com/heidi7121/223739839949"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": "high",
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {},
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "sokamono",
+      "name": "소카모노",
+      "shortName": "소카모노",
+      "searchName": "소카모노 연남",
+      "aliases": [
+        "soka mono",
+        "고양이 소품샵",
+        "고양이 굿즈"
+      ],
+      "primaryCategory": "lifestyle",
+      "tags": [
+        "실내",
+        "구경 위주",
+        "짧게 들르기"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 성미산로 167-1 1층",
+      "location": {
+        "lat": 37.564444,
+        "lng": 126.924818,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": null,
+      "oneLineReason": "고양이 캐릭터 문구·소품만 모은 연남 골목 소품샵",
+      "description": "고양이를 주제로 한 문구와 소품이 가득한 작은 가게예요. 연남동 안쪽 골목에 있어 연남 산책 코스 끝에 들르기 좋아요.",
+      "priceLevel": null,
+      "priceNote": null,
+      "stayMinutes": [
+        10,
+        20
+      ],
+      "openingHours": {
+        "mon": "closed",
+        "tue": "13:00-19:00",
+        "wed": "13:00-19:00",
+        "thu": "13:00-19:00",
+        "fri": "13:00-19:00",
+        "sat": "13:00-19:00",
+        "sun": "13:00-19:00"
+      },
+      "hoursNote": "2026 후기 기준. 예전 후기엔 화요일 휴무·주말 20시까지로 나와 있어 바뀌었을 수 있어요",
+      "floor": "1층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "needs-check",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "방문 후기 (2026)",
+          "url": "https://m.blog.naver.com/jhshjh9455/224253410841",
+          "type": "blog",
+          "note": "13:00~19:00, 월요일 휴무"
+        },
+        {
+          "label": "방문 후기 (2023)",
+          "url": "https://m.blog.naver.com/wh012/223114698720",
+          "type": "blog",
+          "note": "성미산로 167-1, 이전 영업시간"
+        }
+      ],
+      "review": {
+        "pros": [
+          "고양이 굿즈 종류가 많아 고양이 좋아하면 만족도 높음",
+          "가게만의 색깔이 확실하다는 평"
+        ],
+        "cons": [
+          "오후에 열고 저녁에 일찍 닫음"
+        ],
+        "goodFor": [
+          "고양이 좋아하는 친구"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "방문 후기 (2026)",
+            "url": "https://m.blog.naver.com/jhshjh9455/224253410841"
+          },
+          {
+            "label": "연남동 소품샵 3곳 정리",
+            "url": "https://blog.naver.com/coto1020/223428250157"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://m.blog.naver.com/kakoi77/222042800692"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {},
+      "issues": [
+        "영업시간·휴무일이 예전 후기와 달라요. 바뀌었을 수 있어요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "kittybunnypony-hapjeong",
+      "name": "메종 키티버니포니 합정",
+      "shortName": "키티버니포니",
+      "searchName": "메종 키티버니포니",
+      "aliases": [
+        "kitty bunny pony",
+        "파우치",
+        "패브릭"
+      ],
+      "primaryCategory": "lifestyle",
+      "tags": [
+        "실내",
+        "구경 위주",
+        "이색 공간",
+        "사진 맛집"
+      ],
+      "area": "sangsu-hapjeong",
+      "address": "서울 마포구 월드컵로5길 33-16",
+      "location": {
+        "lat": 37.551983,
+        "lng": 126.909847,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (도로 단위)",
+        "note": "도로 단위 근사 위치라 실제 매장과 수십 m 다를 수 있어요."
+      },
+      "nearestExit": null,
+      "oneLineReason": "주택을 고친 패브릭 브랜드 쇼룸, 파우치 구경 맛집",
+      "description": "패브릭 브랜드 키티버니포니의 합정 쇼룸이에요. 오래된 주택을 고친 건물에 1층은 파우치·가방 같은 소품, 2층은 침구·쿠션이 집처럼 꾸며져 있어요.",
+      "priceLevel": 2,
+      "priceNote": null,
+      "stayMinutes": [
+        20,
+        40
+      ],
+      "openingHours": {
+        "mon": "closed",
+        "tue": "12:00-19:00",
+        "wed": "12:00-19:00",
+        "thu": "12:00-19:00",
+        "fri": "12:00-19:00",
+        "sat": "12:00-19:00",
+        "sun": "12:00-19:00"
+      },
+      "hoursNote": "월요일·공휴일 휴무 (공식 공지)",
+      "floor": "1~2층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": "https://kittybunnypony.com/",
+        "instagram": "https://www.instagram.com/kittybunnypony/"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "키티버니포니 공식 공지 (오프라인 스토어 안내)",
+          "url": "https://kittybunnypony.com/article/notice/1/188206",
+          "type": "official",
+          "note": "월드컵로5길 33-16, 화~일 12:00~19:00, 월·공휴일 휴무"
+        }
+      ],
+      "review": {
+        "pros": [
+          "집처럼 꾸민 공간이라 구경 자체가 재미있음",
+          "파우치는 크기·패턴 고르는 재미가 있음"
+        ],
+        "cons": [],
+        "goodFor": [
+          "패브릭·인테리어 소품 좋아하는 친구"
+        ],
+        "practical": [
+          "월요일·공휴일 휴무"
+        ],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "여행톡톡 소품샵 추천",
+            "url": "https://www.tourtoctoc.com/news/articleView.html?idxno=2703"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/with_ssogong/223688607768"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {},
+      "issues": [
+        "근거가 된 공식 공지는 2025년 9월 글이에요. 그 뒤 바뀌었을 수 있어요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "overdeep",
+      "name": "오버딥 연남",
+      "shortName": "오버딥",
+      "searchName": "오버딥 연남",
+      "aliases": [
+        "overdeep",
+        "심해 카페",
+        "바다 카페",
+        "파도크림라떼"
+      ],
+      "primaryCategory": "dessert",
+      "tags": [
+        "실내",
+        "사진 맛집",
+        "이색 공간",
+        "비 오는 날"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 성미산로 149-8 2·3층, 루프탑",
+      "location": {
+        "lat": 37.56466,
+        "lng": 126.922944,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": "홍대입구역 3번 출구에서 약 760m",
+      "oneLineReason": "건물 전체가 심해 콘셉트, 연남에서 가장 파란 카페",
+      "description": "2·3층과 루프탑을 쓰는 바다 콘셉트 카페예요. 위층으로 갈수록 어두운 심해 분위기에 해파리 장식과 미디어아트가 있어요. 시그니처는 크림을 파도처럼 올린 파도크림라떼.",
+      "priceLevel": 2,
+      "priceNote": "시그니처 음료 7,000원대",
+      "stayMinutes": [
+        40,
+        80
+      ],
+      "openingHours": {
+        "mon": "closed",
+        "tue": "11:00-21:00",
+        "wed": "11:00-21:00",
+        "thu": "11:00-21:00",
+        "fri": "11:00-21:00",
+        "sat": "11:00-21:00",
+        "sun": "11:00-21:00"
+      },
+      "hoursNote": "월요일 휴무 (VisitSeoul·공식 인스타)",
+      "floor": "2층 주문, 3층·루프탑 좌석",
+      "entranceTip": "파란 건물이라 골목에서도 바로 보여요.",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://www.instagram.com/overdeep_yeonnam"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "VisitSeoul",
+          "url": "https://korean.visitseoul.net/area/Overdeep-Yeonnam/KOP8jtxt1",
+          "type": "tourism",
+          "note": "화~일 11:00~21:00, 월 휴무, 주소"
+        },
+        {
+          "label": "오버딥 공식 인스타그램",
+          "url": "https://www.instagram.com/overdeep_yeonnam",
+          "type": "sns",
+          "note": "open 11:00–21:00 (Mon off)"
+        },
+        {
+          "label": "다이닝코드",
+          "url": "https://www.diningcode.com/profile.php?rid=4mp0ta0IeOsw",
+          "type": "map",
+          "note": "평가 키워드, 2026.10 후기 모음"
+        }
+      ],
+      "review": {
+        "pros": [
+          "콘셉트가 확실해 사진이 잘 나옴",
+          "층마다 분위기가 달라 둘러보는 재미",
+          "루프탑이 있어 날씨 좋은 날 좋음"
+        ],
+        "cons": [
+          "위층은 어두워 계단 주의",
+          "밝은 카페를 좋아하면 호불호",
+          "디저트 종류는 많지 않다는 평"
+        ],
+        "goodFor": [
+          "사진 남기고 싶은 친구들"
+        ],
+        "practical": [
+          "음료 7,000원대",
+          "주차 불가, 대중교통 추천"
+        ],
+        "sourceCount": 4,
+        "sources": [
+          {
+            "label": "다이닝코드 후기 모음",
+            "url": "https://www.diningcode.com/profile.php?rid=4mp0ta0IeOsw"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/black_cat6/223720784383"
+          },
+          {
+            "label": "방문 후기 (2024)",
+            "url": "https://janjandaily.tistory.com/625"
+          },
+          {
+            "label": "VisitSeoul 소개",
+            "url": "https://korean.visitseoul.net/area/Overdeep-Yeonnam/KOP8jtxt1"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "mid",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "signatureMenu": [
+          "파도크림라떼",
+          "크림브륄레라떼",
+          "마들렌"
+        ],
+        "seating": "2·3층과 루프탑, 규모 큰 편"
+      },
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "layered-yeonnam",
+      "name": "카페 레이어드 연남",
+      "shortName": "레이어드",
+      "searchName": "카페 레이어드 연남",
+      "aliases": [
+        "layered",
+        "스콘"
+      ],
+      "primaryCategory": "dessert",
+      "tags": [
+        "실내",
+        "디저트 맛집",
+        "사진 맛집",
+        "웨이팅 있음"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 성미산로 161-4",
+      "location": {
+        "lat": 37.564985,
+        "lng": 126.924188,
+        "accuracy": "exact",
+        "source": "OpenStreetMap 매장 위치"
+      },
+      "nearestExit": null,
+      "oneLineReason": "스콘과 영국식 케이크가 창가에 가득한 연남 대표 디저트 카페",
+      "description": "스콘 여러 종류와 영국식 케이크를 진열해 두고 골라 먹는 베이커리 카페예요. 건물 한 채를 카페로 써서 층마다 좌석이 있어요.",
+      "priceLevel": 2,
+      "priceNote": "스콘 4,500원 안팎, 케이크 6~7천원대 (예전 후기, 변동 가능)",
+      "stayMinutes": [
+        40,
+        70
+      ],
+      "openingHours": {
+        "mon": "10:00-22:00",
+        "tue": "10:00-22:00",
+        "wed": "10:00-22:00",
+        "thu": "10:00-22:00",
+        "fri": "10:00-22:00",
+        "sat": "10:00-22:00",
+        "sun": "10:00-22:00"
+      },
+      "hoursNote": "공식 인스타 매장별 영업시간 안내 기준",
+      "floor": null,
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": "sometimes",
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "카페 레이어드 공식 인스타그램 (영업시간 안내)",
+          "url": "https://www.instagram.com/p/DPP5aJ8Eulb/",
+          "type": "sns",
+          "note": "연남점 10:00~22:00"
+        },
+        {
+          "label": "트립닷컴",
+          "url": "https://kr.trip.com/moments/theme/poi-layered-yeonnam-145046373-restaurant-993134",
+          "type": "map",
+          "note": "성미산로 161-4"
+        }
+      ],
+      "review": {
+        "pros": [
+          "디저트 진열이 예뻐 고르는 재미",
+          "스콘 종류가 다양함"
+        ],
+        "cons": [
+          "의자가 딱딱하고 작다는 후기",
+          "맛보다 분위기라는 평도 있음",
+          "인기 시간엔 대기"
+        ],
+        "goodFor": [
+          "디저트 사진 좋아하는 친구"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "방문 후기 (2018, 오픈 초기)",
+            "url": "https://blog.naver.com/PostView.naver?blogId=xjvm9026&logNo=221423808347"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://bokmanhee.tistory.com/68"
+          },
+          {
+            "label": "트립닷컴 후기 모음",
+            "url": "https://kr.trip.com/moments/theme/poi-cafe-layerd-140740613-restaurant-993134/"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "mid",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "signatureMenu": [
+          "스콘",
+          "빅토리아 케이크"
+        ],
+        "seating": "여러 층, 좌석 많은 편"
+      },
+      "issues": [
+        "오픈 시각이 출처마다 달라요 (10시 / 11시)."
+      ],
+      "listed": true
+    },
+    {
+      "id": "butter-and-shelter",
+      "name": "버터앤쉘터 연남점",
+      "shortName": "버터앤쉘터",
+      "searchName": "버터앤쉘터 연남점",
+      "aliases": [
+        "butter & shelter",
+        "버터샌드"
+      ],
+      "primaryCategory": "dessert",
+      "tags": [
+        "실내",
+        "디저트 맛집",
+        "웨이팅 있음"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 성미산로 170 102호",
+      "location": {
+        "lat": 37.5642,
+        "lng": 126.9252,
+        "accuracy": "approx",
+        "source": "인근 번지 좌표로 추정",
+        "note": "주소 검색이 안 돼 인근 번지 기준으로 위치를 추정했어요.",
+        "manual": true
+      },
+      "nearestExit": "홍대입구역 3번 출구에서 약 700m",
+      "oneLineReason": "수제 캐러멜 버터샌드가 시그니처인 아늑한 디저트 카페",
+      "description": "주택을 고친 듯한 아늑한 공간에서 버터샌드와 쿠키, 크림 커피를 파는 카페예요. 테라스 좌석도 있어요.",
+      "priceLevel": 2,
+      "priceNote": "버터샌드 3,200~3,500원, 쿠키 4천원대 (2023 후기)",
+      "stayMinutes": [
+        30,
+        60
+      ],
+      "openingHours": {
+        "mon": "10:00-21:00",
+        "tue": "10:00-21:00",
+        "wed": "10:00-21:00",
+        "thu": "10:00-21:00",
+        "fri": "10:00-21:00",
+        "sat": "10:00-21:00",
+        "sun": "10:00-21:00"
+      },
+      "hoursNote": "연중무휴",
+      "floor": "1층",
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": "sometimes",
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "당근 동네 업체 정보",
+          "url": "https://www.daangn.com/kr/local-profile/%EB%B2%84%ED%84%B0%EC%95%A4%EC%89%98%ED%84%B0-1necpky5s5ni/",
+          "type": "map",
+          "note": "성미산로 170, 10:00~21:00 연중무휴"
+        },
+        {
+          "label": "트립닷컴",
+          "url": "https://www.trip.com/moments/theme/poi-butter-and-shelter-140731160-restaurant-993134/",
+          "type": "map",
+          "note": "10:00~21:00"
+        }
+      ],
+      "review": {
+        "pros": [
+          "버터샌드가 시그니처로 꾸준히 언급됨",
+          "쿠키·디저트 종류가 많음",
+          "아늑한 인테리어와 테라스"
+        ],
+        "cons": [
+          "인기 시간엔 웨이팅이 길다는 후기",
+          "버터샌드는 꽤 단 편"
+        ],
+        "goodFor": [
+          "구움과자·쿠키 좋아하는 친구"
+        ],
+        "practical": [
+          "버터샌드 3,200~3,500원, 쿠키 4천원대",
+          "반려견은 야외석만 가능하다는 후기"
+        ],
+        "sourceCount": 4,
+        "sources": [
+          {
+            "label": "방문 후기 (2023)",
+            "url": "https://vhap990.tistory.com/12"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/khing311/223501328789"
+          },
+          {
+            "label": "포장 후기",
+            "url": "https://m.blog.naver.com/ablossom1130/223369108139"
+          },
+          {
+            "label": "Corner 소개",
+            "url": "https://www.corner.inc/place/pHjWx35kpfMh"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "signatureMenu": [
+          "버터샌드",
+          "버터슈페너",
+          "르뱅쿠키"
+        ],
+        "seating": "실내 3개 공간과 테라스"
+      },
+      "issues": [
+        "주소 표기가 출처마다 달라요. 지도 위치는 추정한 값이에요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "gongmyoung-hongdae",
+      "name": "카페 공명 홍대점",
+      "shortName": "카페 공명",
+      "searchName": "카페 공명 홍대점",
+      "aliases": [
+        "공명",
+        "비스킷슈",
+        "루프탑 카페"
+      ],
+      "primaryCategory": "dessert",
+      "tags": [
+        "실내",
+        "디저트 맛집",
+        "늦게까지",
+        "오래 머물기"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 와우산로17길 11-8",
+      "location": {
+        "lat": 37.549924,
+        "lng": 126.922024,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": null,
+      "oneLineReason": "빵·크림 디저트가 많은 홍대 중심 대형 카페, 루프탑까지",
+      "description": "홍대 한가운데 있는 대형 카페예요. 비스킷슈·스콘 같은 크림 디저트와 빵 종류가 많고, 날씨 좋은 날엔 루프탑이 인기예요.",
+      "priceLevel": 2,
+      "priceNote": "라떼 6~7천원, 비스킷슈 4,600원 (연남점 2026 후기 기준)",
+      "stayMinutes": [
+        40,
+        90
+      ],
+      "openingHours": {
+        "mon": "11:00-23:00",
+        "tue": "11:00-23:00",
+        "wed": "11:00-23:00",
+        "thu": "11:00-23:00",
+        "fri": "11:00-23:00",
+        "sat": "11:00-23:00",
+        "sun": "11:00-23:00"
+      },
+      "hoursNote": "트립닷컴 안내 기준. 공식 출처로는 아직 확인 못 했어요",
+      "floor": null,
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "needs-check",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "트립닷컴 카페 공명 홍대점",
+          "url": "https://kr.trip.com/moments/theme/poi-cafe-gong-myoung-hongdae-branch-147719989-food-993052",
+          "type": "map",
+          "note": "와우산로17길 11-8, 11:00~23:00"
+        },
+        {
+          "label": "홍대점 방문 후기",
+          "url": "https://blog.naver.com/to_myday/223447959714",
+          "type": "blog",
+          "note": "루프탑, 빵, 자체 로스팅"
+        }
+      ],
+      "review": {
+        "pros": [
+          "빵·디저트가 맛있다는 평이 많음",
+          "지점 중 홍대점 분위기가 가장 좋다는 후기",
+          "루프탑이 있음"
+        ],
+        "cons": [
+          "사람이 많고 좌석이 다소 불편하다는 평"
+        ],
+        "goodFor": [
+          "오래 앉아 수다 떨 곳이 필요한 친구들"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "홍대점 방문 후기",
+            "url": "https://blog.naver.com/to_myday/223447959714"
+          },
+          {
+            "label": "다이닝코드 카페 공명 후기 (지점 비교 포함)",
+            "url": "https://www.diningcode.com/profile.php?rid=vbZXUq6LJBDi"
+          },
+          {
+            "label": "트립닷컴 후기 모음",
+            "url": "https://kr.trip.com/moments/theme/poi-cafe-gong-myoung-hongdae-branch-147719989-food-993052"
+          }
+        ],
+        "checkedAt": "2026-10-16",
+        "note": "일부 후기는 같은 브랜드 다른 지점(연남점) 방문기예요."
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": "high"
+      },
+      "details": {
+        "signatureMenu": [
+          "공명라떼",
+          "비스킷슈",
+          "스콘"
+        ],
+        "seating": "대형, 루프탑 있음"
+      },
+      "issues": [
+        "홍대점 자체의 영업시간·가격은 확인하지 못했어요.",
+        "가격과 후기 일부는 같은 브랜드 연남점 자료예요.",
+        "루프탑 운영 현황은 확인하지 못했어요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "kyodaiya",
+      "name": "교다이야",
+      "shortName": "교다이야",
+      "searchName": "교다이야 합정",
+      "aliases": [
+        "우동",
+        "사누키 우동",
+        "미쉐린"
+      ],
+      "primaryCategory": "food",
+      "tags": [
+        "웨이팅 있음"
+      ],
+      "area": "sangsu-hapjeong",
+      "address": "서울 마포구 성지길 39 합정빌딩 1층",
+      "location": {
+        "lat": 37.546856,
+        "lng": 126.913207,
+        "accuracy": "exact",
+        "source": "OpenStreetMap 매장 위치"
+      },
+      "nearestExit": "합정역 7번 출구 도보 약 5분",
+      "oneLineReason": "주문하면 바로 썰어 삶는 사누키 우동, 미쉐린 빕 구르망",
+      "description": "형제가 운영하는 사누키 우동 전문점이에요. 숙성한 반죽을 주문이 들어올 때 썰어 삶아 면발이 쫄깃해요. 예약 없이 현장 대기만 받아요.",
+      "priceLevel": 2,
+      "priceNote": "우동 단품 1만원대 초반, 정식 16,500원 (2026 후기)",
+      "stayMinutes": [
+        30,
+        50
+      ],
+      "openingHours": {
+        "mon": "closed",
+        "tue": "11:00-20:30",
+        "wed": "11:00-20:30",
+        "thu": "11:00-20:30",
+        "fri": "11:00-20:30",
+        "sat": "11:00-20:30",
+        "sun": "11:00-20:30"
+      },
+      "hoursNote": "브레이크타임 15:00~17:00. 저녁 영업 여부가 출처마다 달라 저녁엔 전화 확인 추천 (02-2654-2645)",
+      "floor": "1층",
+      "entranceTip": "주택가 골목 안쪽이라 지도 앱을 켜 두는 게 편해요.",
+      "reservation": "no",
+      "waiting": "often",
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "미쉐린 가이드 빕 구르망 목록",
+          "url": "https://guide.michelin.com/kr/ko/selection/south-korea/restaurants/bib-gourmand",
+          "type": "official",
+          "note": "2026 빕 구르망 선정 매장 (목록 기준)"
+        },
+        {
+          "label": "다이닝코드",
+          "url": "https://www.diningcode.com/profile.php?rid=FnqoA13qRDU4",
+          "type": "map",
+          "note": "월요일 휴무, 2026 후기 모음"
+        },
+        {
+          "label": "방문 후기 (2025.11)",
+          "url": "https://m.blog.naver.com/cjycjy9423/224088984153",
+          "type": "blog",
+          "note": "11:00~20:30, 브레이크 15~17, 월 휴무"
+        }
+      ],
+      "review": {
+        "pros": [
+          "쫄깃한 면발이 가장 많이 언급됨",
+          "회전이 빨라 대기가 생각보다 빨리 빠진다는 후기",
+          "정식 구성이 알참"
+        ],
+        "cons": [
+          "주말엔 30~45분 대기 후기",
+          "매장이 좁고 시끌벅적",
+          "일행이 모두 와야 입장"
+        ],
+        "goodFor": [
+          "우동·면 좋아하는 친구"
+        ],
+        "practical": [
+          "예약 불가, 현장 번호표",
+          "주차 불가"
+        ],
+        "sourceCount": 5,
+        "sources": [
+          {
+            "label": "다이닝코드 후기 모음",
+            "url": "https://www.diningcode.com/profile.php?rid=FnqoA13qRDU4"
+          },
+          {
+            "label": "주말 웨이팅 후기",
+            "url": "https://blog.naver.com/qpdlwl29/224275874640"
+          },
+          {
+            "label": "방문 후기 (2025)",
+            "url": "https://m.blog.naver.com/so0oho0o/223825472522"
+          },
+          {
+            "label": "방문 후기 (2023)",
+            "url": "https://jhjeon0910.tistory.com/300"
+          },
+          {
+            "label": "평일 웨이팅 후기",
+            "url": "https://m.blog.naver.com/040314/224224378500"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "mid",
+        "friendGroup": null,
+        "crowd": "high"
+      },
+      "details": {
+        "signatureMenu": [
+          "자루붓카케우동",
+          "덴뿌라우동 정식",
+          "가케우동"
+        ],
+        "seating": "작은 편",
+        "pricePerPerson": "1인 약 1.1~1.7만원"
+      },
+      "issues": [
+        "저녁 영업 여부가 확실하지 않아요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "seogyo-nanmyeonbang",
+      "name": "서교난면방",
+      "shortName": "서교난면방",
+      "searchName": "서교난면방",
+      "aliases": [
+        "난면",
+        "국수",
+        "미쉐린"
+      ],
+      "primaryCategory": "food",
+      "tags": [
+        "웨이팅 있음"
+      ],
+      "area": "sangsu-hapjeong",
+      "address": "서울 마포구 동교로12길 16 1층",
+      "location": {
+        "lat": 37.553586,
+        "lng": 126.912322,
+        "accuracy": "exact",
+        "source": "OpenStreetMap 매장 위치"
+      },
+      "nearestExit": "합정역 9번 출구 도보 약 6분",
+      "oneLineReason": "계란 난면에 닭·한우 육수, 2025~26 미쉐린 빕 구르망 국수",
+      "description": "우리밀 계란면(난면)과 구엄닭·한우를 섞은 맑은 육수가 대표인 국수집이에요. 들기름 비빔 난면, 콩난면 같은 메뉴도 있어요.",
+      "priceLevel": 2,
+      "priceNote": "국수 13,000~14,000원 (캐치테이블)",
+      "stayMinutes": [
+        30,
+        50
+      ],
+      "openingHours": {
+        "mon": "11:00-21:00",
+        "tue": "closed",
+        "wed": "11:00-21:00",
+        "thu": "11:00-21:00",
+        "fri": "11:00-21:00",
+        "sat": "11:00-21:00",
+        "sun": "11:00-21:00"
+      },
+      "hoursNote": "화요일 휴무. 브레이크타임 평일 15:00~17:30, 주말 15:00~17:00 (공식 인스타). 이용시간 최대 1시간",
+      "floor": "1층",
+      "entranceTip": null,
+      "reservation": null,
+      "waiting": "sometimes",
+      "paymentNote": null,
+      "links": {
+        "official": "https://app.catchtable.co.kr/ct/shop/seokyonanmyun",
+        "instagram": "https://www.instagram.com/seokyonanmyunbang/"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "서교난면방 공식 인스타그램",
+          "url": "https://www.instagram.com/seokyonanmyunbang/",
+          "type": "sns",
+          "note": "2025-26 빕 구르망, 화요일 휴무, 2026.09 게시물"
+        },
+        {
+          "label": "공식 인스타 영업시간 공지",
+          "url": "https://www.instagram.com/p/DJsw-pBOLIl/",
+          "type": "sns",
+          "note": "11:00~21:00, 브레이크타임"
+        },
+        {
+          "label": "캐치테이블",
+          "url": "https://app.catchtable.co.kr/ct/shop/seokyonanmyun",
+          "type": "map",
+          "note": "메뉴·가격, 예약·웨이팅"
+        }
+      ],
+      "review": {
+        "pros": [
+          "맑고 깊은 육수가 자주 언급됨",
+          "남은 육수에 밥을 말아 먹는 셀프바"
+        ],
+        "cons": [
+          "이용시간이 최대 1시간으로 정해져 있음"
+        ],
+        "goodFor": [
+          "담백한 면 요리 좋아하는 친구"
+        ],
+        "practical": [
+          "캐치테이블로 예약·웨이팅 가능"
+        ],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "캐치테이블 리뷰 요약",
+            "url": "https://app.catchtable.co.kr/ct/shop/seokyonanmyun"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/PostView.naver?blogId=dbswl2394&logNo=224338599909"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "mid",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "signatureMenu": [
+          "서교난면",
+          "들기름 난면과 모르따델라 햄",
+          "콩난면"
+        ],
+        "pricePerPerson": "1인 약 1.3~1.4만원"
+      },
+      "issues": [],
+      "listed": true
+    },
+    {
+      "id": "hapjeongok",
+      "name": "합정옥",
+      "shortName": "합정옥",
+      "searchName": "합정옥",
+      "aliases": [
+        "곰탕",
+        "미쉐린"
+      ],
+      "primaryCategory": "food",
+      "tags": [],
+      "area": "sangsu-hapjeong",
+      "address": "서울 마포구 양화로1길 21 2층",
+      "location": {
+        "lat": 37.549595,
+        "lng": 126.910457,
+        "accuracy": "exact",
+        "source": "OpenStreetMap 건물 위치 (같은 건물 1층 매장 기준)",
+        "note": "건물 단위 좌표예요. 입구는 지도 앱에서 확인해 주세요."
+      },
+      "nearestExit": "합정역 8번 출구 도보 약 4분",
+      "oneLineReason": "맑은 국물 곰탕 한 그릇, 미쉐린 빕 구르망 곰탕집",
+      "description": "양지와 사골로 우린 맑은 곰탕에 밥을 말아 내는 곰탕집이에요. 매장이 넓어 여럿이 가기 편하고 수육·곱창전골 같은 메뉴도 있어요.",
+      "priceLevel": 2,
+      "priceNote": "곰탕 12,000원, 특곰탕 14,000원 (2026 후기)",
+      "stayMinutes": [
+        30,
+        45
+      ],
+      "openingHours": {
+        "mon": "11:00-22:00",
+        "tue": "11:00-22:00",
+        "wed": "11:00-22:00",
+        "thu": "11:00-22:00",
+        "fri": "11:00-22:00",
+        "sat": "11:00-22:00",
+        "sun": "closed"
+      },
+      "hoursNote": "라스트오더 20:30, 일요일 휴무",
+      "floor": "2층",
+      "entranceTip": null,
+      "reservation": null,
+      "waiting": "sometimes",
+      "paymentNote": "카드 가능",
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "미쉐린 가이드 빕 구르망 목록",
+          "url": "https://guide.michelin.com/kr/ko/selection/south-korea/restaurants/bib-gourmand",
+          "type": "official",
+          "note": "빕 구르망 선정 매장 (목록 기준)"
+        },
+        {
+          "label": "트립인포",
+          "url": "https://www.tripinfo.co.kr/info.html?content_id=2871395&content_type_id=39",
+          "type": "map",
+          "note": "11:00~22:00, LO 20:30, 일요일 휴무"
+        },
+        {
+          "label": "다이닝코드",
+          "url": "https://www.diningcode.com/profile.php?rid=bDlUpVT87aiE",
+          "type": "map",
+          "note": "2026.09~10 후기 모음"
+        }
+      ],
+      "review": {
+        "pros": [
+          "잡내 없이 깔끔하고 담백한 국물",
+          "고기가 부드럽다는 평",
+          "매장이 넓고 회전이 빠름"
+        ],
+        "cons": [
+          "평범한 곰탕 맛이라 기대가 크면 아쉽다는 의견",
+          "김치가 많이 시었다는 후기도 있음"
+        ],
+        "goodFor": [
+          "든든한 한식 한 끼가 필요할 때"
+        ],
+        "practical": [
+          "건물 옆 주차 가능하다는 후기"
+        ],
+        "sourceCount": 4,
+        "sources": [
+          {
+            "label": "다이닝코드 후기 모음",
+            "url": "https://www.diningcode.com/profile.php?rid=bDlUpVT87aiE"
+          },
+          {
+            "label": "방문 후기 (2026.09)",
+            "url": "https://blog.naver.com/PostView.nhn?blogId=since150327&logNo=224424910071"
+          },
+          {
+            "label": "방문 후기 (2026.09)",
+            "url": "https://blog.naver.com/PostView.nhn?blogId=shin_1122&logNo=224424976361"
+          },
+          {
+            "label": "방문 후기 (2026.09)",
+            "url": "https://blog.naver.com/PostView.nhn?blogId=choco_luna&logNo=224423797701"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "mid",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "signatureMenu": [
+          "양지곰탕",
+          "특곰탕",
+          "수육무침"
+        ],
+        "seating": "넓은 편, 4인석 위주",
+        "pricePerPerson": "1인 약 1.2~1.4만원"
+      },
+      "issues": [
+        "위치 정확도는 건물 단위예요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "tuktuk-noodle-thai",
+      "name": "툭툭누들타이",
+      "shortName": "툭툭누들타이",
+      "searchName": "툭툭누들타이",
+      "aliases": [
+        "태국 음식",
+        "뿌팟퐁커리",
+        "팟타이"
+      ],
+      "primaryCategory": "food",
+      "tags": [
+        "웨이팅 있음",
+        "예약 추천"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 성미산로 161-8 2층",
+      "location": {
+        "lat": 37.56488,
+        "lng": 126.92432,
+        "accuracy": "approx",
+        "source": "인근 번지 좌표로 추정",
+        "note": "주소 검색이 안 돼 인근 번지(성미산로 161-4) 기준으로 위치를 추정했어요.",
+        "manual": true
+      },
+      "nearestExit": "홍대입구역 3번 출구 도보 약 13분",
+      "oneLineReason": "태국 셰프의 뿌팟퐁커리, 연남에서 오래 사랑받은 태국 음식점",
+      "description": "태국 현지 셰프가 조리하는 연남동 태국 음식점이에요. 뿌팟퐁커리, 똠얌꿍, 팟타이가 대표 메뉴이고 미쉐린 빕 구르망에 여러 해 이름을 올렸어요(2025 후기 기준).",
+      "priceLevel": 3,
+      "priceNote": "2인 세트 55,000원, 텃만꿍 16,000원 (2025 후기)",
+      "stayMinutes": [
+        50,
+        80
+      ],
+      "openingHours": {
+        "mon": "11:30-21:00",
+        "tue": "11:30-21:00",
+        "wed": "closed",
+        "thu": "11:30-21:00",
+        "fri": "11:30-21:00",
+        "sat": "11:30-21:00",
+        "sun": "11:30-21:00"
+      },
+      "hoursNote": "브레이크타임 15:30~17:00, 라스트오더 14:50·20:20 (2025.05 후기 기준)",
+      "floor": "2층",
+      "entranceTip": null,
+      "reservation": "recommended",
+      "waiting": "often",
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "needs-check",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "방문 후기 (2025.05)",
+          "url": "https://foodanddaily.tistory.com/25",
+          "type": "blog",
+          "note": "주소, 영업시간, 예약·원격 줄서기"
+        }
+      ],
+      "review": {
+        "pros": [
+          "뿌팟퐁커리가 특히 맛있다는 평",
+          "직원 응대가 친절"
+        ],
+        "cons": [
+          "모든 메뉴가 입맛에 맞지는 않았다는 솔직 후기",
+          "평소 웨이팅이 많은 편"
+        ],
+        "goodFor": [
+          "태국 음식 좋아하는 친구"
+        ],
+        "practical": [
+          "네이버 예약·캐치테이블 원격 줄서기 가능"
+        ],
+        "sourceCount": 1,
+        "sources": [
+          {
+            "label": "방문 후기 (2025.05)",
+            "url": "https://foodanddaily.tistory.com/25"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "high",
+        "friendGroup": null,
+        "crowd": "high"
+      },
+      "details": {
+        "signatureMenu": [
+          "뿌팟퐁커리",
+          "똠얌꿍",
+          "팟타이",
+          "연남갈비국수"
+        ],
+        "pricePerPerson": "1인 약 2.5~3만원 (2인 세트 기준)"
+      },
+      "issues": [
+        "2025년 5월 후기 1건 이후로 운영 여부를 확인하지 못했어요.",
+        "지도 위치는 근처 번지로 추정한 값이에요."
+      ],
+      "listed": false,
+      "hiddenReason": "근거가 2025년 5월 후기 1건뿐이고 현재 운영 여부를 확인하지 못해 기본 목록에서 뺐어요."
+    },
+    {
+      "id": "zzang-arcade",
+      "name": "짱오락실 홍대점",
+      "shortName": "짱오락실",
+      "searchName": "짱오락실 홍대점",
+      "aliases": [
+        "오락실",
+        "리듬게임",
+        "인형뽑기",
+        "아케이드"
+      ],
+      "primaryCategory": "play",
+      "tags": [
+        "실내",
+        "애니·게임",
+        "늦게까지",
+        "친구끼리",
+        "비 오는 날",
+        "저렴함"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 어울마당로 69 1~3층",
+      "location": {
+        "lat": 37.551267,
+        "lng": 126.921096,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": null,
+      "oneLineReason": "새벽까지 여는 홍대 중심가 대형 오락실",
+      "description": "홍대 중심가의 여러 층짜리 대형 오락실이에요. 인형뽑기와 리듬게임 등이 있다는 후기가 많아요(층별 구성은 바뀔 수 있어요). 상상마당 바로 옆이라 찾기 쉬워요.",
+      "priceLevel": 1,
+      "priceNote": null,
+      "stayMinutes": [
+        20,
+        60
+      ],
+      "openingHours": {
+        "mon": "11:00-02:00",
+        "tue": "11:00-02:00",
+        "wed": "11:00-02:00",
+        "thu": "11:00-02:00",
+        "fri": "11:00-03:00",
+        "sat": "10:00-03:00",
+        "sun": "10:00-02:00"
+      },
+      "hoursNote": "공식 매장 안내 기준",
+      "floor": "1~3층",
+      "entranceTip": "상상마당 바로 옆 건물이에요.",
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": "https://cocozzang.com/html/dh_board/views/66",
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "짱오락실 공식 매장 안내",
+          "url": "https://cocozzang.com/html/dh_board/views/66",
+          "type": "official",
+          "note": "어울마당로 69, 요일별 영업시간"
+        },
+        {
+          "label": "나무위키 오락실/서울/강북",
+          "url": "https://namu.wiki/w/%EC%98%A4%EB%9D%BD%EC%8B%A4/%EC%84%9C%EC%9A%B8/%EA%B0%95%EB%B6%81",
+          "type": "map",
+          "note": "최종 확인 2026.09.11, 층별 구성"
+        }
+      ],
+      "review": {
+        "pros": [
+          "홍대 한가운데라 접근성이 좋음",
+          "리듬게임 기기가 한 층에 모여 있음"
+        ],
+        "cons": [
+          "리듬게임 외 아케이드 기종은 줄었다는 기록",
+          "1·2층은 인형뽑기 위주"
+        ],
+        "goodFor": [
+          "리듬게임 하는 친구",
+          "밤늦게까지 놀 곳이 필요할 때"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "나무위키 기록",
+            "url": "https://namu.wiki/w/%EC%98%A4%EB%9D%BD%EC%8B%A4/%EC%84%9C%EC%9A%B8/%EA%B0%95%EB%B6%81"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://m.blog.naver.com/mok527/222491658696"
+          },
+          {
+            "label": "방문 후기 (2018)",
+            "url": "https://blog.naver.com/headlineuser/221259878756"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "duration": "자유 (게임당 결제)"
+      },
+      "issues": [
+        "층별 구성(인형뽑기·리듬게임)은 현재 상태를 확인하지 못했어요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "sangsangmadang",
+      "name": "KT&G 상상마당 홍대",
+      "shortName": "상상마당",
+      "searchName": "KT&G 상상마당 홍대",
+      "aliases": [
+        "상상마당",
+        "전시",
+        "팝업",
+        "디자인스퀘어",
+        "아따맘마"
+      ],
+      "primaryCategory": "play",
+      "tags": [
+        "실내",
+        "전시",
+        "팝업",
+        "비 오는 날",
+        "저렴함",
+        "구경 위주"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 어울마당로 65",
+      "location": {
+        "lat": 37.550989,
+        "lng": 126.921068,
+        "accuracy": "exact",
+        "source": "OpenStreetMap 시설 위치"
+      },
+      "nearestExit": null,
+      "oneLineReason": "캐릭터 팝업부터 갤러리 전시까지, 갈 때마다 바뀌는 문화 공간",
+      "description": "갤러리, 라이브홀, 디자인스퀘어(팝업 공간)가 모인 복합문화공간이에요. 시기마다 전시와 팝업이 바뀌니 가기 전에 공식 홈페이지에서 지금 하는 행사를 확인하세요.",
+      "priceLevel": 1,
+      "priceNote": "전시·팝업마다 다름 (무료였던 팝업이 있었어요)",
+      "stayMinutes": [
+        20,
+        60
+      ],
+      "openingHours": {
+        "mon": "11:00-21:00",
+        "tue": "11:00-21:00",
+        "wed": "11:00-21:00",
+        "thu": "11:00-21:00",
+        "fri": "11:00-21:00",
+        "sat": "11:00-21:00",
+        "sun": "11:00-21:00"
+      },
+      "hoursNote": "디자인스퀘어 팝업 기준. 갤러리는 11:00~19:00 (현재 전시 기준)",
+      "floor": null,
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": "https://www.sangsangmadang.com/main/HD",
+        "instagram": "https://www.instagram.com/ssmadang.official/"
+      },
+      "events": [
+        {
+          "title": "가을엔 아따맘마! 우리집으로 놀러와~",
+          "kind": "팝업",
+          "where": "디자인스퀘어 2F",
+          "from": "2026-09-22",
+          "until": "2026-10-18",
+          "url": "https://www.sangsangmadang.com/display/detail/3179"
+        },
+        {
+          "title": "WEAR SEOUL, KEEP KOREA.",
+          "kind": "기획전시",
+          "where": "디자인스퀘어 1F",
+          "from": "2026-09-29",
+          "until": "2026-11-18",
+          "url": "https://www.sangsangmadang.com/display/detail/3184"
+        },
+        {
+          "title": "《같은 무게의 날들》",
+          "kind": "전시",
+          "where": "갤러리 3~5F",
+          "from": "2026-10-08",
+          "until": "2026-11-22",
+          "hours": "11:00~19:00",
+          "url": "https://www.sangsangmadang.com/display/detail/3187"
+        }
+      ],
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "KT&G 상상마당 홍대 공식 (공연/전시)",
+          "url": "https://www.sangsangmadang.com/main/HD",
+          "type": "official",
+          "note": "현재 전시·팝업 일정"
+        },
+        {
+          "label": "상상마당 갤러리 공식 인스타그램",
+          "url": "https://www.instagram.com/ssmadang_gallery",
+          "type": "sns",
+          "note": "같은 무게의 날들 11:00~19:00"
+        },
+        {
+          "label": "공식 팝업 상세 (2026.03, 운영시간 예시)",
+          "url": "https://www.sangsangmadang.com/display/detail/3063",
+          "type": "official",
+          "note": "디자인스퀘어 11:00~21:00, 무료"
+        }
+      ],
+      "review": null,
+      "traits": {
+        "browse": null,
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "pricePerPerson": "전시·팝업 상당수 무료"
+      },
+      "issues": [
+        "운영시간은 전시·팝업마다 달라요. 표시된 시간은 지난 팝업 기준이에요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "luso-jewelry",
+      "name": "루소주얼리 홍대본점",
+      "shortName": "루소주얼리",
+      "searchName": "루소주얼리 홍대본점",
+      "aliases": [
+        "반지 만들기",
+        "우정링",
+        "커플링",
+        "은반지"
+      ],
+      "primaryCategory": "play",
+      "tags": [
+        "실내",
+        "핸드메이드",
+        "친구끼리",
+        "예약 추천",
+        "비 오는 날"
+      ],
+      "area": "hongdae-station",
+      "address": "서울 마포구 동교동 165-1 미래프라자 지하 1층 (홍대입구역 8번 출구 연결)",
+      "location": {
+        "lat": 37.5567,
+        "lng": 126.9241,
+        "accuracy": "approx",
+        "source": "홍대입구역 8번 출구 연결 위치로 추정",
+        "note": "역 8번 출구와 연결된 지하상가 안이라 출구 위치로 표시했어요.",
+        "manual": true
+      },
+      "nearestExit": "홍대입구역 8번 출구 연결",
+      "oneLineReason": "은반지를 직접 다듬어 만들고 당일에 가져가는 반지 공방",
+      "description": "주얼리숍이 운영하는 반지 만들기 공방이에요. 디자인·각인·유광/무광을 고른 뒤 직접 모양을 잡고 광을 내서 완성해요. 위험한 작업은 없다는 후기가 많아요.",
+      "priceLevel": 3,
+      "priceNote": "2인 평반지 만들기 정가 10만원 (할인 판매가 자주 있음)",
+      "stayMinutes": [
+        60,
+        120
+      ],
+      "openingHours": {
+        "mon": "10:00-20:00",
+        "tue": "10:00-20:00",
+        "wed": "10:00-20:00",
+        "thu": "10:00-20:00",
+        "fri": "10:00-20:00",
+        "sat": "10:00-20:00",
+        "sun": "10:00-20:00"
+      },
+      "hoursNote": "공식 지점 안내 기준, 연중무휴. 30분 단위 예약",
+      "floor": "지하 1층",
+      "entranceTip": "홍대입구역 8번 출구 쪽 지하상가와 연결돼 있어요.",
+      "reservation": "recommended",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": "http://www.luso.co.kr/",
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "루소주얼리 공식 지점안내",
+          "url": "https://m.luso.co.kr/shopinfo/map.html",
+          "type": "official",
+          "note": "10:00~20:00, 홍대본점 연중무휴"
+        },
+        {
+          "label": "데이트팝 상품 페이지 (2025)",
+          "url": "https://datepop.co.kr/item/27382",
+          "type": "map",
+          "note": "가격, 주소, 체험 과정"
+        }
+      ],
+      "review": {
+        "pros": [
+          "손재주가 없어도 완성도 있게 만들 수 있다는 후기",
+          "은 재질이라 금속 알레르기 걱정이 적다는 후기",
+          "당일 수령 가능"
+        ],
+        "cons": [],
+        "goodFor": [
+          "우정링·커플링 만들고 싶은 친구"
+        ],
+        "practical": [
+          "디자인·각인 선택 후 제작, 당일 또는 다른 날 수령 선택"
+        ],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "데이트팝 체험 후기",
+            "url": "https://datepop.co.kr/item/27382"
+          },
+          {
+            "label": "반지 만들기 안내 글",
+            "url": "https://m.blog.naver.com/lusoj2/221515963241"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "high",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "pricePerPerson": "1인 약 5만원 (정가 기준, 디자인별 상이)",
+        "duration": null,
+        "minPeople": null,
+        "maxPeople": null,
+        "takeHomeResult": "당일 수령 가능"
+      },
+      "issues": [
+        "마감 시각이 출처마다 달라요 (20시 / 22시).",
+        "지도 위치는 역 출구 기준으로 추정한 값이에요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "caplab",
+      "name": "캡랩 연남 (CAPLAB)",
+      "shortName": "캡랩",
+      "searchName": "캡랩 연남",
+      "aliases": [
+        "CAPLAB",
+        "모자 커스텀",
+        "캡꾸",
+        "패치"
+      ],
+      "primaryCategory": "play",
+      "tags": [
+        "실내",
+        "핸드메이드",
+        "친구끼리",
+        "사진 맛집"
+      ],
+      "area": "yeonnam",
+      "address": "서울 마포구 연남동 241-47 지층",
+      "location": {
+        "lat": 37.5638,
+        "lng": 126.9247,
+        "accuracy": "approx",
+        "source": "지번 주소로 대략 추정",
+        "note": "지번 주소만 있어 위치를 대략 추정했어요. 오차가 클 수 있어요.",
+        "manual": true
+      },
+      "nearestExit": null,
+      "oneLineReason": "패치를 골라 붙여 나만의 모자를 만드는 연남 커스텀 숍",
+      "description": "모자를 고르고 패치·장식을 골라 붙여 나만의 모자를 만드는 커스텀 숍이에요. 모자는 매장 자체 디자인이에요.",
+      "priceLevel": null,
+      "priceNote": null,
+      "stayMinutes": [
+        30,
+        60
+      ],
+      "openingHours": {
+        "mon": "closed",
+        "tue": "12:00-20:00",
+        "wed": "12:00-20:00",
+        "thu": "12:00-20:00",
+        "fri": "12:00-20:00",
+        "sat": "12:00-20:00",
+        "sun": "12:00-20:00"
+      },
+      "hoursNote": "월요일 정기휴무 (공식 인스타)",
+      "floor": "지층(반지하)",
+      "entranceTip": null,
+      "reservation": null,
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": "https://www.instagram.com/caplab_seoul"
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "verified",
+      "verifiedAt": "2026-10-16",
+      "sources": [
+        {
+          "label": "캡랩 공식 인스타그램",
+          "url": "https://www.instagram.com/caplab_seoul",
+          "type": "sns",
+          "note": "연남동 241-47 지층, 12PM~8PM, 월 휴무"
+        }
+      ],
+      "review": {
+        "pros": [
+          "패치 종류가 많아 고르는 재미",
+          "혼자 가도 재밌었다는 후기"
+        ],
+        "cons": [],
+        "goodFor": [
+          "기념품을 직접 만들고 싶은 친구들"
+        ],
+        "practical": [],
+        "sourceCount": 2,
+        "sources": [
+          {
+            "label": "방문 후기",
+            "url": "https://m.blog.naver.com/dijurido1/224252077200"
+          },
+          {
+            "label": "방문 후기 릴스",
+            "url": "https://www.instagram.com/reel/DV_DRBakcmW"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": null,
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "pricePerPerson": null,
+        "duration": null,
+        "takeHomeResult": null
+      },
+      "issues": [
+        "번지 표기가 두 가지예요 (연남동 241-37 / 241-47). 지도 위치는 오차가 클 수 있어요."
+      ],
+      "listed": true
+    },
+    {
+      "id": "dontlookup-hongdae",
+      "name": "돈룩업 홍대",
+      "shortName": "돈룩업",
+      "searchName": "돈룩업 홍대",
+      "aliases": [
+        "DON'T LXXK UP",
+        "셀프사진",
+        "네컷",
+        "하이앵글",
+        "인생네컷"
+      ],
+      "primaryCategory": "play",
+      "tags": [
+        "실내",
+        "사진 맛집",
+        "친구끼리",
+        "늦게까지",
+        "짧게 들르기",
+        "저렴함"
+      ],
+      "area": "hongdae-main",
+      "address": "서울 마포구 와우산로21길 20",
+      "location": {
+        "lat": 37.552478,
+        "lng": 126.922958,
+        "accuracy": "approx",
+        "source": "OpenStreetMap 주소 검색 (건물 단위)"
+      },
+      "nearestExit": "홍대입구역 9번 출구에서 약 510m",
+      "oneLineReason": "위에서 내려찍는 하이앵글 셀프사진, 24시간 무인",
+      "description": "천장 쪽 카메라로 위에서 찍는 하이앵글 셀프사진관이에요. 방마다 배경색이 달라 고르는 재미가 있어요. 무인으로 24시간 운영한다는 후기가 많아요.",
+      "priceLevel": 1,
+      "priceNote": null,
+      "stayMinutes": [
+        10,
+        20
+      ],
+      "openingHours": {
+        "mon": "00:00-24:00",
+        "tue": "00:00-24:00",
+        "wed": "00:00-24:00",
+        "thu": "00:00-24:00",
+        "fri": "00:00-24:00",
+        "sat": "00:00-24:00",
+        "sun": "00:00-24:00"
+      },
+      "hoursNote": "무인 24시간 운영 (후기 기준)",
+      "floor": null,
+      "entranceTip": null,
+      "reservation": "no",
+      "waiting": null,
+      "paymentNote": null,
+      "links": {
+        "official": null,
+        "instagram": null
+      },
+      "checkedAt": "2026-10-16",
+      "verificationStatus": "cross-checked",
+      "verifiedAt": null,
+      "sources": [
+        {
+          "label": "포토부스 매장 정보",
+          "url": "https://photobooth.joelin.cc/ko/korea/locations/dlu-hongdae-2/",
+          "type": "map",
+          "note": "와우산로21길 20"
+        },
+        {
+          "label": "방문 후기",
+          "url": "https://blog.naver.com/89702565/223682305454",
+          "type": "blog",
+          "note": "24시간 연중무휴, 9번 출구 512m"
+        },
+        {
+          "label": "마이리얼트립 소개",
+          "url": "https://www.myrealtrip.com/community/posts/35595",
+          "type": "blog",
+          "note": "하이앵글, 컬러 룸"
+        }
+      ],
+      "review": {
+        "pros": [
+          "하이앵글 구도로 색다른 사진",
+          "방마다 다른 컬러 배경"
+        ],
+        "cons": [],
+        "goodFor": [
+          "오늘 놀았던 기념사진 남기기"
+        ],
+        "practical": [],
+        "sourceCount": 3,
+        "sources": [
+          {
+            "label": "마이리얼트립 소개",
+            "url": "https://www.myrealtrip.com/community/posts/35595"
+          },
+          {
+            "label": "방문 후기",
+            "url": "https://blog.naver.com/89702565/223682305454"
+          },
+          {
+            "label": "방문 후기 (팝업 부스)",
+            "url": "https://m.blog.naver.com/PostView.naver?blogId=dion_2&logNo=223687750589"
+          }
+        ],
+        "checkedAt": "2026-10-16"
+      },
+      "traits": {
+        "browse": null,
+        "priceBurden": "low",
+        "friendGroup": null,
+        "crowd": null
+      },
+      "details": {
+        "duration": "10~20분"
+      },
+      "issues": [],
+      "listed": true
+    }
+  ]
+};
+
+</script>
+<script>
+/* 홍대 느슨지도 — 계산·텍스트 도우미 (화면과 무관한 순수 함수) */
+(function () {
+  'use strict';
+  var DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  var DAY_KO = { mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토', sun: '일' };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* 거리: 직선거리(m). 도보 분 = 직선 × 골목 보정 ÷ 분당 미터 (길찾기 아님, 추정치) */
+  function distance(a, b) {
+    var R = 6371000, toR = Math.PI / 180;
+    var dLat = (b.lat - a.lat) * toR, dLng = (b.lng - a.lng) * toR;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function walkMinutes(meters, walk) {
+    return Math.max(1, Math.round(meters * walk.detour / walk.metersPerMinute));
+  }
+
+  /* 한국 시간 기준 현재 시각. 테스트용으로 주소에 ?now=2026-11-02T14:30 을 붙이면 그 시각으로 계산 */
+  function seoulNow() {
+    var forced = null;
+    try {
+      var m = /[?&]now=([0-9T:\-]+)/.exec(window.location.search);
+      if (m) forced = m[1];
+    } catch (e) {}
+    if (forced) {
+      var p = forced.split('T'), d = p[0].split('-').map(Number), t = (p[1] || '12:00').split(':').map(Number);
+      var dt = new Date(Date.UTC(d[0], d[1] - 1, d[2]));
+      return { day: DAYS[dt.getUTCDay()], minutes: t[0] * 60 + (t[1] || 0), date: p[0] };
+    }
+    var parts = {};
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false
+    }).formatToParts(new Date()).forEach(function (x) { parts[x.type] = x.value; });
+    var hour = Number(parts.hour) % 24;
+    return {
+      day: parts.weekday.toLowerCase().slice(0, 3),
+      minutes: hour * 60 + Number(parts.minute),
+      date: parts.year + '-' + parts.month + '-' + parts.day
+    };
+  }
+  function prevDay(day) { return DAYS[(DAYS.indexOf(day) + 6) % 7]; }
+
+  function toMin(hhmm) { var a = hhmm.split(':'); return Number(a[0]) * 60 + Number(a[1]); }
+  function fmt(min) {
+    min = ((min % 1440) + 1440) % 1440;
+    return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+  }
+  /* "10:00-02:00" → {start:600, end:1560} (자정 넘김은 end 에 1440 더함) */
+  function parseRange(v) {
+    if (!v || v === 'closed') return null;
+    var a = v.split('-');
+    var s = toMin(a[0]), e = toMin(a[1]);
+    if (e <= s) e += 1440;
+    return { start: s, end: e };
+  }
+
+  /* 영업 상태: open / closing(1시간 이내 마감) / before(오늘 나중에 엶) / closed / unknown */
+  function openState(place, now) {
+    var oh = place.openingHours;
+    if (!oh || oh[now.day] === undefined || oh[now.day] === null) {
+      return { code: 'unknown', label: '영업시간 정보 없음' };
+    }
+    var y = parseRange(oh[prevDay(now.day)]);
+    if (y && y.end > 1440 && now.minutes < y.end - 1440) {
+      var left = y.end - 1440 - now.minutes;
+      return { code: left <= 60 ? 'closing' : 'open', label: (left <= 60 ? '곧 마감 · ' : '영업 중 · ') + fmt(y.end) + '까지' };
+    }
+    if (oh[now.day] === 'closed') return { code: 'closed', label: '오늘 휴무' };
+    var t = parseRange(oh[now.day]);
+    if (!t) return { code: 'unknown', label: '영업시간 정보 없음' };
+    if (t.start === 0 && t.end === 1440) return { code: 'open', label: '24시간 영업' };
+    if (now.minutes < t.start) return { code: 'before', label: '영업 전 · ' + fmt(t.start) + ' 오픈' };
+    if (now.minutes < t.end) {
+      var l = t.end - now.minutes;
+      return { code: l <= 60 ? 'closing' : 'open', label: (l <= 60 ? '곧 마감 · ' : '영업 중 · ') + fmt(t.end) + '까지' };
+    }
+    return { code: 'closed', label: '오늘 영업 끝' };
+  }
+  function isOpenNow(place, now) {
+    var c = openState(place, now).code;
+    return c === 'open' || c === 'closing';
+  }
+  /* 늦게까지: 오늘 22시 이후까지 영업, 또는 영업시간이 없고 '늦게까지' 태그 */
+  function isLate(place, now) {
+    var oh = place.openingHours;
+    if (!oh || !oh[now.day]) return (place.tags || []).indexOf('늦게까지') >= 0;
+    var t = parseRange(oh[now.day]);
+    return !!t && t.end >= 22 * 60;
+  }
+  function weekRows(place) {
+    var order = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    var oh = place.openingHours || {};
+    return order.map(function (k) {
+      var v = oh[k];
+      var text = v == null ? '확인 안 됨' : v === 'closed' ? '휴무' : v === '00:00-24:00' ? '24시간' : v.replace('-', ' ~ ');
+      return { key: k, label: DAY_KO[k], text: text };
+    });
+  }
+
+  function activeEvents(place, today) {
+    return (place.events || []).filter(function (e) {
+      return (!e.from || e.from <= today) && (!e.until || e.until >= today);
+    });
+  }
+  function daysBetween(a, b) {
+    return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+  }
+
+  /* 초성 검색 */
+  var CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+  function chosung(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i) - 0xAC00;
+      out += (c >= 0 && c < 11172) ? CHO[Math.floor(c / 588)] : s[i];
+    }
+    return out;
+  }
+  function isChosungOnly(s) { return /^[ㄱ-ㅎ\s]+$/.test(s); }
+  function norm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
+
+  /* 외부 지도 링크 (길찾기는 각 앱에서) */
+  function naverUrl(p) { return 'https://map.naver.com/p/search/' + encodeURIComponent(p.searchName || p.name); }
+  function kakaoUrl(p) {
+    if (p.location && p.location.accuracy === 'exact') {
+      return 'https://map.kakao.com/link/map/' + encodeURIComponent(p.name) + ',' + p.location.lat + ',' + p.location.lng;
+    }
+    return 'https://map.kakao.com/link/search/' + encodeURIComponent(p.searchName || p.name);
+  }
+  function blogSearchUrl(p) {
+    return 'https://search.naver.com/search.naver?where=blog&query=' + encodeURIComponent((p.searchName || p.name) + ' 후기');
+  }
+
+  window.HM_UTIL = {
+    esc: esc, distance: distance, walkMinutes: walkMinutes, seoulNow: seoulNow,
+    openState: openState, isOpenNow: isOpenNow, isLate: isLate, weekRows: weekRows,
+    activeEvents: activeEvents, daysBetween: daysBetween, fmt: fmt, parseRange: parseRange,
+    chosung: chosung, isChosungOnly: isChosungOnly, norm: norm,
+    naverUrl: naverUrl, kakaoUrl: kakaoUrl, blogSearchUrl: blogSearchUrl, DAY_KO: DAY_KO
+  };
+})();
+
+/* 홍대 느슨지도 — 지도 어댑터 (Leaflet).
+   app.js 는 Leaflet 을 직접 부르지 않고 이 파일의 HM_MAP 만 씁니다.
+   나중에 카카오맵 등으로 바꿀 때는 이 파일만 같은 함수 이름으로 새로 만들면 됩니다. */
+(function () {
+  'use strict';
+  var U = window.HM_UTIL;
+  var map, markerLayer, ringLayer, routeLayer, baseLayer, meLayer;
+  var markers = {};
+  var opts = {};
+  var tileLayer = null, tilesOk = false, activeTile = null, tileList = [];
+  var overlays = {};
+
+  function init(el, settings, o) {
+    opts = o || {};
+    var cfg = settings.map;
+    map = L.map(el, {
+      center: cfg.center, zoom: cfg.zoom, minZoom: cfg.minZoom, maxZoom: cfg.maxZoom,
+      zoomControl: false, attributionControl: true,
+      tap: true
+    });
+    map.attributionControl.setPrefix(false);
+    window.__hmMap = map;
+    L.control.scale({ imperial: false, position: 'bottomleft', maxWidth: 90 }).addTo(map);
+
+    /* 레이어 순서 (아래 → 위): 지도 배경 타일 → 기본 표시(역·동네) → 도보 원 → 경로선 → 장소 핀 → 내 위치.
+       경로선 전용 칸(pane)을 따로 두어, 나중에 실제 도보 경로(골목길을 따라가는 빨간 선)를 넣어도 핀 아래에 깔린다. */
+    map.createPane('hmRoute').style.zIndex = 450;   // 기본 도형 칸(400)과 핀 칸(600) 사이
+    baseLayer = L.layerGroup().addTo(map);
+    ringLayer = L.layerGroup().addTo(map);
+    routeLayer = L.layerGroup().addTo(map);
+    markerLayer = L.layerGroup().addTo(map);
+    meLayer = L.layerGroup().addTo(map);
+    overlays = { base: baseLayer, rings: ringLayer, route: routeLayer, places: markerLayer, me: meLayer };
+
+    drawBase(settings);
+    tileList = cfg.tiles;
+    tryTiles(tileList, 0);
+
+    map.on('zoomend', function () {
+      el.classList.toggle('show-labels', map.getZoom() >= 17);
+      el.classList.toggle('show-zones', map.getZoom() <= 16 && map.getZoom() >= 15);
+      el.classList.toggle('far', map.getZoom() <= 14);
+    });
+    el.classList.toggle('show-zones', map.getZoom() <= 16 && map.getZoom() >= 15);
+    el.classList.toggle('far', map.getZoom() <= 14);
+    map.on('click', function () { if (opts.onMapClick) opts.onMapClick(); });
+  }
+
+  /* 지도 배경(타일)이 막혀도 방향을 잡을 수 있게 역 출구와 동네 이름을 직접 그린다 */
+  function drawBase(settings) {
+    settings.zones.forEach(function (z) {
+      L.marker(z.center, {
+        interactive: false, keyboard: false,
+        icon: L.divIcon({ className: 'zone-label', html: '<span>' + U.esc(z.label) + '</span>', iconSize: [120, 24], iconAnchor: [60, 12] })
+      }).addTo(baseLayer);
+    });
+    settings.startPoints.forEach(function (s) {
+      var short = s.label.replace(/ \(.+\)/, '').replace('홍대입구역', '홍대입구').replace(' 출구', '');
+      L.marker([s.lat, s.lng], {
+        interactive: false, keyboard: false,
+        icon: L.divIcon({ className: 'exit-pin', html: '<b>M</b><span>' + U.esc(short) + '</span>', iconSize: [18, 18], iconAnchor: [9, 9] })
+      }).addTo(baseLayer);
+    });
+  }
+
+  /* ---------- 지도 배경(타일) ----------
+     v0.2.1: 이미지가 "불러와졌는지"만 보던 방식에서, 서버가 실제로 허락했는지(HTTP 상태)를 먼저 확인하는 방식으로 바꿈.
+     - OpenStreetMap 서버는 정책을 어긴 요청(예: 파일을 직접 열어 Referer 가 없는 요청)에 403 + "Access blocked" 그림을 보낸다.
+       그림도 '이미지'라서 예전 코드는 성공으로 착각했다.
+     - 그래서 지도 가운데 타일 1장을 fetch 로 먼저 받아 상태 코드를 본다. 거절(4xx·5xx)이면 다음 배경으로 넘어간다.
+     - fetch 자체가 막혀 결과를 모르면(네트워크·CORS) 예전처럼 이미지로 시도하고, 연속 실패하면 넘어간다. */
+  var diag = []; // [{id, step, result, detail}] — 무엇이 왜 실패했는지 기록 (화면 안내·?mapdebug 에 사용)
+
+  function tileUrl(t, z, x, y) {
+    var s = (t.subdomains || 'a').charAt(0);
+    return t.url.replace('{s}', s).replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{r}', '');
+  }
+  function centerTile(z) {
+    var c = map.getCenter(), n = Math.pow(2, z), rad = c.lat * Math.PI / 180;
+    return { x: Math.floor((c.lng + 180) / 360 * n), y: Math.floor((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n) };
+  }
+  function note(id, step, result, detail) {
+    diag.push({ id: id, step: step, result: result, detail: detail || '' });
+    if (opts.onDiag) opts.onDiag(diag.slice());
+  }
+
+  function probe(t, cb) {
+    if (!window.fetch || t.probe === false) { cb('unknown'); return; }
+    var z = Math.min(map.getZoom(), t.maxNativeZoom || 19), c = centerTile(z), url = tileUrl(t, z, c.x, c.y);
+    var done = false, timer = setTimeout(function () { if (!done) { done = true; note(t.id, 'probe', 'unknown', '응답 지연(8초)'); cb('unknown'); } }, 8000);
+    fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'strict-origin-when-cross-origin', cache: 'force-cache' })
+      .then(function (r) {
+        if (done) return; done = true; clearTimeout(timer);
+        if (r.ok) { note(t.id, 'probe', 'ok', 'HTTP ' + r.status); cb('ok'); }
+        else { note(t.id, 'probe', 'blocked', 'HTTP ' + r.status); cb('blocked'); }
+      }, function (err) {
+        if (done) return; done = true; clearTimeout(timer);
+        note(t.id, 'probe', 'unknown', '요청 실패(네트워크 차단 또는 CORS): ' + (err && err.message || err)); cb('unknown');
+      });
+  }
+
+  function tryTiles(list, i) {
+    if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
+    if (i >= list.length) {
+      tilesOk = false;
+      map.getContainer().classList.add('no-tiles');
+      if (opts.onTilesFailed) opts.onTilesFailed(diag.slice());
+      return;
+    }
+    var t = list[i];
+    probe(t, function (state) {
+      if (state === 'blocked') { tryTiles(list, i + 1); return; }
+      useLayer(list, i, t);
+    });
+  }
+
+  function useLayer(list, i, t) {
+    var loaded = 0, failed = 0, switched = false;
+    var layer = L.tileLayer(t.url, {
+      subdomains: t.subdomains || 'abc', maxNativeZoom: t.maxNativeZoom, maxZoom: 19,
+      attribution: t.attribution, detectRetina: false,
+      referrerPolicy: 'strict-origin-when-cross-origin' // 타일 서버가 어느 사이트에서 쓰는지 알 수 있게(OSM 정책)
+    });
+    function giveUp(why) {
+      if (switched) return; switched = true;
+      note(t.id, 'tiles', 'failed', why);
+      tryTiles(list, i + 1);
+    }
+    layer.on('tileload', function () {
+      loaded++;
+      if (!tilesOk) {
+        tilesOk = true; activeTile = t.id;
+        map.getContainer().classList.remove('no-tiles');
+        note(t.id, 'tiles', 'ok', '타일 표시됨');
+        if (opts.onTilesOk) opts.onTilesOk(t);
+      }
+    });
+    layer.on('tileerror', function () {
+      failed++;
+      if (loaded === 0 && failed >= 4) giveUp('타일 ' + failed + '장 연속 실패');
+    });
+    tileLayer = layer;
+    layer.addTo(map);
+    // 느린 모바일 회선을 고려해 15초까지 기다린다 (v0.2 는 7초)
+    setTimeout(function () { if (tileLayer === layer && loaded === 0 && failed > 0) giveUp('15초 동안 한 장도 못 받음'); }, 15000);
+  }
+
+  function pinHtml(m) {
+    return '<div class="pin' + (m.selected ? ' is-sel' : '') + (m.saved ? ' is-saved' : '') + (m.dim ? ' is-dim' : '') +
+      (m.warn ? ' is-warn' : '') + '" style="--c:' + m.color + '">' +
+      '<span class="pin-dot">' + (m.number ? '<b>' + m.number + '</b>' : '<i>' + m.icon + '</i>') + '</span>' +
+      (m.saved ? '<i class="pin-heart" aria-hidden="true"></i>' : '') +
+      '<span class="pin-label">' + U.esc(m.label) + '</span></div>';
+  }
+
+  /* items: [{id, lat, lng, color, icon, label, selected, saved, dim, warn, number}] */
+  function setMarkers(items) {
+    markerLayer.clearLayers();
+    markers = {};
+    items.forEach(function (m) {
+      var mk = L.marker([m.lat, m.lng], {
+        icon: L.divIcon({ className: 'pin-wrap', html: pinHtml(m), iconSize: [34, 34], iconAnchor: [17, 17] }),
+        zIndexOffset: m.selected ? 1000 : (m.saved ? 200 : 0),
+        keyboard: true, title: m.label, riseOnHover: true
+      });
+      mk.on('click', function (e) {
+        L.DomEvent.stopPropagation(e);
+        if (opts.onPick) opts.onPick(m.id);
+      });
+      mk.addTo(markerLayer);
+      markers[m.id] = mk;
+    });
+  }
+
+  /* 화면 아래 시트가 지도를 가리는 만큼 비켜서 보여 준다 */
+  function pad() { return opts.getPadding ? opts.getPadding() : { top: 0, bottom: 0, left: 0 }; }
+
+  function focus(lat, lng, zoom) {
+    var p = pad();
+    var z = Math.max(zoom || map.getZoom(), map.getZoom());
+    var size = map.getSize();
+    var target = map.project([lat, lng], z);
+    var visibleCenterY = p.top + (size.y - p.top - p.bottom) / 2;
+    var visibleCenterX = p.left + (size.x - p.left) / 2;
+    target = target.add([size.x / 2 - visibleCenterX, size.y / 2 - visibleCenterY]);
+    map.setView(map.unproject(target, z), z, { animate: true });
+  }
+
+  function fitTo(points) {
+    if (!points.length) return;
+    if (points.length === 1) { focus(points[0][0], points[0][1], 17); return; }
+    var p = pad();
+    var size = map.getSize();
+    var availY = size.y - p.top - p.bottom;
+    var extra = availY < 160 ? 10 : 40;
+    map.fitBounds(L.latLngBounds(points), {
+      paddingTopLeft: [p.left + extra, p.top + extra],
+      paddingBottomRight: [extra, p.bottom + extra],
+      maxZoom: 17, animate: true
+    });
+  }
+
+  function showRings(lat, lng, rings, walk) {
+    ringLayer.clearLayers();
+    rings.forEach(function (min) {
+      var r = min * walk.metersPerMinute / walk.detour;
+      L.circle([lat, lng], { radius: r, className: 'ring', interactive: false }).addTo(ringLayer);
+      var labelPt = L.latLng(lat + r / 111320, lng);
+      L.marker(labelPt, {
+        interactive: false,
+        icon: L.divIcon({ className: 'ring-label', html: '<span>도보 ' + min + '분</span>', iconSize: [64, 18], iconAnchor: [32, 9] })
+      }).addTo(ringLayer);
+    });
+  }
+  function clearRings() { ringLayer.clearLayers(); }
+
+  function showRoute(latlngs) {
+    routeLayer.clearLayers();
+    if (latlngs.length > 1) L.polyline(latlngs, { className: 'route', interactive: false, pane: 'hmRoute' }).addTo(routeLayer);
+  }
+  function clearRoute() { routeLayer.clearLayers(); }
+
+  function showMe(lat, lng) {
+    meLayer.clearLayers();
+    L.marker([lat, lng], {
+      interactive: false,
+      icon: L.divIcon({ className: 'me-pin', html: '<span></span>', iconSize: [18, 18], iconAnchor: [9, 9] })
+    }).addTo(meLayer);
+  }
+  function clearMe() { meLayer.clearLayers(); }
+  function goZone(z) { map.setView(z.center, z.zoom, { animate: true }); }
+  function invalidate() { if (map) map.invalidateSize(); }
+  function tilesLoaded() { return tilesOk; }
+  function tileStatus() { return { ok: tilesOk, active: activeTile, log: diag.slice() }; }
+  function retryTiles() { diag = []; tilesOk = false; activeTile = null; tryTiles(tileList, 0); }
+
+  /* 나중 기능(개인 핀, 코스 주변 추천 등)을 위한 이름 붙은 레이어.
+     overlay('personal') 처럼 부르면 같은 레이어를 돌려주고, 없으면 새로 만든다. 지도 전체를 다시 만들 필요 없음. */
+  function overlay(name, o) {
+    if (!overlays[name]) {
+      if (o && o.pane && !map.getPane(o.pane)) map.createPane(o.pane).style.zIndex = o.zIndex || 500;
+      overlays[name] = L.layerGroup([], o && o.pane ? { pane: o.pane } : undefined).addTo(map);
+    }
+    return overlays[name];
+  }
+
+  window.HM_MAP = {
+    init: init, setMarkers: setMarkers, focus: focus, fitTo: fitTo,
+    showRings: showRings, clearRings: clearRings, showRoute: showRoute, clearRoute: clearRoute,
+    showMe: showMe, clearMe: clearMe, goZone: goZone, invalidate: invalidate, tilesLoaded: tilesLoaded,
+    tileStatus: tileStatus, retryTiles: retryTiles, overlay: overlay
+  };
+})();
+
+/* 홍대 느슨지도 — 화면 동작 */
+(function () {
+  'use strict';
+  var U = window.HM_UTIL, M = window.HM_MAP;
+  var C = window.HM_SETTINGS, D = window.HM_PLACES;
+  var esc = U.esc;
+  var places = D.places;
+  var byId = {}, catById = {};
+  places.forEach(function (p) { byId[p.id] = p; });
+  C.categories.forEach(function (c) { catById[c.id] = c; });
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    app: $('app'), topbar: $('topbar'), q: $('q'), qClear: $('qClear'), cats: $('cats'),
+    savedBtn: $('savedBtn'), savedCount: $('savedCount'), sheet: $('sheet'), grab: $('grab'),
+    body: $('sheetBody'), toast: $('toast'), modal: $('modal'), mapNote: $('mapNote'),
+    zoneBtn: $('zoneBtn'), zoneMenu: $('zoneMenu'), locBtn: $('locBtn'), mapCtl: $('mapCtl')
+  };
+
+  /* ---------- 저장 (이 기기 브라우저에만) ---------- */
+  function load(key, fallback) {
+    try { var v = window.localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+  }
+  function store(key, val) {
+    try { window.localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; }
+  }
+
+  var S = {
+    view: 'list', placeId: null, shareIds: [],
+    cats: [], quick: [], tag: null, q: '',
+    near: null, start: load(C.storageKeys.start, C.defaultStartPoint), me: null,
+    saved: load(C.storageKeys.saved, []).filter(function (id) { return byId[id]; }),
+    showHidden: false, sheet: 'half', listScroll: 0, depth: 0, storageWarned: false
+  };
+  if (S.start === 'me' || !C.startPoints.some(function (s) { return s.id === S.start; })) S.start = C.defaultStartPoint;
+
+  /* 같은 건물 좌표를 쓰는 장소는 지도에서만 살짝 벌려 표시 (거리 계산은 원래 좌표) */
+  var displayPos = {};
+  (function spread() {
+    var groups = {};
+    places.forEach(function (p) {
+      var k = p.location.lat.toFixed(5) + ',' + p.location.lng.toFixed(5);
+      (groups[k] = groups[k] || []).push(p);
+    });
+    Object.keys(groups).forEach(function (k) {
+      var g = groups[k];
+      g.forEach(function (p, i) {
+        if (g.length === 1) { displayPos[p.id] = [p.location.lat, p.location.lng]; return; }
+        var a = (2 * Math.PI * i) / g.length, r = 14;
+        displayPos[p.id] = [p.location.lat + (r * Math.cos(a)) / 111320, p.location.lng + (r * Math.sin(a)) / 88200];
+      });
+    });
+  })();
+
+  /* ---------- 계산 ---------- */
+  var now = U.seoulNow();
+  function startPoint() {
+    if (S.start === 'me' && S.me) return { lat: S.me.lat, lng: S.me.lng, label: '내 위치' };
+    var s = C.startPoints.filter(function (x) { return x.id === S.start; })[0] || C.startPoints[0];
+    return { lat: s.lat, lng: s.lng, label: s.label };
+  }
+  function origin() {
+    if (S.near && byId[S.near]) { var p = byId[S.near]; return { lat: p.location.lat, lng: p.location.lng, label: p.name }; }
+    return startPoint();
+  }
+  function walkFrom(o, p) { return U.walkMinutes(U.distance(o, p.location), C.walk); }
+
+  function haystack(p) {
+    var d = p.details || {};
+    return U.norm([p.name, p.shortName, (p.aliases || []).join(' '), (p.tags || []).join(' '), p.oneLineReason,
+      p.description, p.address, catById[p.primaryCategory].label, (d.works || []).join(' '), (d.styleKeywords || []).join(' '),
+      (d.signatureMenu || []).join ? (d.signatureMenu || []).join(' ') : d.signatureMenu,
+      (p.events || []).map(function (e) { return e.title; }).join(' ')].join(' '));
+  }
+  var HAY = {}, CHO = {};
+  places.forEach(function (p) {
+    HAY[p.id] = haystack(p);
+    CHO[p.id] = U.chosung([p.name, p.shortName].concat(p.aliases || []).join(' ')).replace(/\s+/g, '');
+  });
+  function matchQuery(p, q) {
+    var tokens = q.trim().split(/\s+/).filter(Boolean);
+    return tokens.every(function (t) {
+      if (U.isChosungOnly(t)) return CHO[p.id].indexOf(t) >= 0;
+      return HAY[p.id].indexOf(U.norm(t)) >= 0;
+    });
+  }
+  function passQuick(p, id) {
+    if (id === 'open') return U.isOpenNow(p, now);
+    if (id === 'indoor') return (p.tags || []).indexOf('실내') >= 0 || (p.tags || []).indexOf('비 오는 날') >= 0;
+    if (id === 'cheap') return p.priceLevel === 1 || (p.tags || []).indexOf('저렴함') >= 0;
+    if (id === 'late') return U.isLate(p, now);
+    if (id === 'limited') return U.activeEvents(p, now.date).length > 0;
+    return true;
+  }
+  function visible(p) { return p.listed !== false || S.showHidden; }
+  function filtered() {
+    var o = origin();
+    return places.filter(function (p) {
+      if (!visible(p)) return false;
+      if (S.near && p.id === S.near) return false;
+      if (S.cats.length && S.cats.indexOf(p.primaryCategory) < 0) return false;
+      if (S.tag && (p.tags || []).indexOf(S.tag) < 0) return false;
+      for (var i = 0; i < S.quick.length; i++) if (!passQuick(p, S.quick[i])) return false;
+      if (S.q && !matchQuery(p, S.q)) return false;
+      return true;
+    }).map(function (p) { return { p: p, min: walkFrom(o, p), m: U.distance(o, p.location) }; })
+      .sort(function (a, b) { return a.m - b.m; });
+  }
+  function hasFilters() { return S.cats.length || S.quick.length || S.tag || S.q; }
+  function hiddenCount() { return places.filter(function (p) { return p.listed === false; }).length; }
+
+  function nearbyOf(p) {
+    var list = places.filter(function (x) { return x.id !== p.id && visible(x); })
+      .map(function (x) { return { p: x, min: walkFrom(p.location, x), m: U.distance(p.location, x.location) }; })
+      .filter(function (x) { return x.min <= C.walk.nearbyMaxMinutes; })
+      .sort(function (a, b) { return a.m - b.m; });
+    var other = list.filter(function (x) { return x.p.primaryCategory !== p.primaryCategory; });
+    var same = list.filter(function (x) { return x.p.primaryCategory === p.primaryCategory; });
+    return other.slice(0, 4).concat(same).slice(0, 4).sort(function (a, b) { return a.m - b.m; });
+  }
+
+  /* 저장 목록을 기준점에서 가까운 곳부터 차례로 잇는 순서 (실제 길찾기 아님) */
+  function courseOrder(ids) {
+    var rest = ids.map(function (id) { return byId[id]; }).filter(Boolean);
+    var cur = startPoint(), out = [], total = 0;
+    while (rest.length) {
+      var bi = 0, bd = Infinity;
+      rest.forEach(function (p, i) { var d = U.distance(cur, p.location); if (d < bd) { bd = d; bi = i; } });
+      var next = rest.splice(bi, 1)[0];
+      var w = U.walkMinutes(bd, C.walk);
+      total += w;
+      out.push({ p: next, walk: w });
+      cur = next.location;
+    }
+    return { list: out, totalWalk: total };
+  }
+
+  /* ---------- 작은 화면 조각 ---------- */
+  var STATUS = {
+    'verified': { label: '공식 출처 확인', cls: 'v-ok', desc: '공식 홈페이지·SNS·관광기관 중 한 곳 이상에서 주소와 영업시간을 확인했어요. 웹으로 확인한 것이고 현장 확인은 아니에요.' },
+    'cross-checked': { label: '여러 출처 일치', cls: 'v-mid', desc: '공식 출처는 찾지 못했지만 서로 다른 출처 두 곳 이상의 정보가 일치했어요.' },
+    'needs-check': { label: '확인 필요', cls: 'v-warn', desc: '근거가 적거나 오래됐어요. 가기 전에 지도 앱에서 영업 여부를 꼭 확인하세요.' }
+  };
+  var PRICE = { 1: '₩ 저렴', 2: '₩₩ 보통', 3: '₩₩₩ 비싼 편' };
+  var RESV = { required: '예약 필수', recommended: '예약 추천', no: '예약 없이 가능' };
+  var WAIT = { often: '웨이팅 자주 있음', sometimes: '가끔 웨이팅', rare: '웨이팅 거의 없음' };
+  var TRAITS = {
+    browse: ['구경거리', { high: '많음', mid: '보통', low: '적음' }],
+    priceBurden: ['가격 부담', { low: '적음', mid: '보통', high: '큼' }],
+    friendGroup: ['친구끼리', { great: '아주 좋음', ok: '괜찮음' }],
+    crowd: ['붐비는 정도', { high: '붐비는 편', mid: '보통', low: '한산한 편' }]
+  };
+
+  function statusChip(p) {
+    var s = U.openState(p, now);
+    return '<span class="st st-' + s.code + '">' + esc(s.label) + '</span>';
+  }
+  function flagChips(p) {
+    var out = '';
+    if (p.listed === false) out += '<span class="flag f-hide">운영 미확인</span>';
+    else if (p.verificationStatus === 'needs-check') out += '<span class="flag f-warn">확인 필요</span>';
+    if (p.location.manual) out += '<span class="flag f-loc">위치 추정</span>';
+    return out;
+  }
+  function heartBtn(p, small) {
+    var on = S.saved.indexOf(p.id) >= 0;
+    return '<button type="button" class="heart' + (small ? ' sm' : '') + (on ? ' on' : '') + '" data-act="save" data-id="' + p.id +
+      '" aria-pressed="' + on + '" aria-label="' + esc(p.name) + (on ? ' 저장 취소' : ' 저장') + '">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg></button>';
+  }
+  function card(x, extra) {
+    var p = x.p, c = catById[p.primaryCategory];
+    return '<li class="pcard" style="--c:' + c.color + '">' +
+      '<button type="button" class="pcard-main" data-act="open" data-id="' + p.id + '">' +
+      '<span class="pc-ic" aria-hidden="true">' + (extra && extra.number ? '<b>' + extra.number + '</b>' : c.icon) + '</span>' +
+      '<span class="pc-body">' +
+      '<span class="pc-top"><span class="pc-name">' + esc(p.name) + '</span><span class="pc-cat">' + esc(c.short) + '</span></span>' +
+      '<span class="pc-reason">' + esc(p.oneLineReason) + '</span>' +
+      '<span class="pc-meta">' + statusChip(p) +
+      (x.min != null ? '<span class="walk">' + (extra && extra.walkLabel ? esc(extra.walkLabel) : '도보 ' + x.min + '분') + '</span>' : '') +
+      (p.priceLevel ? '<span class="price">' + PRICE[p.priceLevel].split(' ')[0] + '</span>' : '') +
+      flagChips(p) + '</span>' +
+      '</span></button>' + heartBtn(p, true) + '</li>';
+  }
+
+  /* ---------- 상단 카테고리 ---------- */
+  function renderCats() {
+    var all = !S.cats.length;
+    el.cats.innerHTML = '<button type="button" class="cat' + (all ? ' on' : '') + '" data-cat="" aria-pressed="' + all + '">전체</button>' +
+      C.categories.map(function (c) {
+        var on = S.cats.indexOf(c.id) >= 0;
+        return '<button type="button" class="cat' + (on ? ' on' : '') + '" data-cat="' + c.id + '" aria-pressed="' + on + '" style="--c:' + c.color + '">' +
+          '<span aria-hidden="true">' + c.icon + '</span>' + esc(c.label) + '</button>';
+      }).join('');
+  }
+
+  /* ---------- 목록 화면 ---------- */
+  function startSelect() {
+    var opts = C.startPoints.map(function (s) {
+      return '<option value="' + s.id + '"' + (S.start === s.id ? ' selected' : '') + '>' + esc(s.label) + '</option>';
+    }).join('');
+    if (S.me) opts += '<option value="me"' + (S.start === 'me' ? ' selected' : '') + '>내 위치</option>';
+    return '<label class="origin" for="startSel"><span>기준</span><select id="startSel">' + opts + '</select></label>';
+  }
+  function filterRow() {
+    var anyLimited = places.some(function (p) { return visible(p) && U.activeEvents(p, now.date).length; });
+    var q = C.quickFilters.filter(function (f) { return f.id !== 'limited' || anyLimited; }).map(function (f) {
+      var on = S.quick.indexOf(f.id) >= 0;
+      return '<button type="button" class="chip' + (on ? ' on' : '') + '" data-quick="' + f.id + '" aria-pressed="' + on + '">' + esc(f.label) + '</button>';
+    }).join('');
+    var used = {};
+    places.forEach(function (p) { if (visible(p)) (p.tags || []).forEach(function (t) { used[t] = (used[t] || 0) + 1; }); });
+    var tags = C.tags.filter(function (t) { return used[t]; }).map(function (t) {
+      var on = S.tag === t;
+      return '<button type="button" class="chip tag' + (on ? ' on' : '') + '" data-tag="' + esc(t) + '" aria-pressed="' + on + '">#' + esc(t) + '</button>';
+    }).join('');
+    return '<div class="chiprow" role="group" aria-label="빠른 필터와 태그">' + q + '<span class="sep" aria-hidden="true"></span>' + tags + '</div>';
+  }
+  function themesBlock() {
+    var anyLimited = places.some(function (p) { return visible(p) && U.activeEvents(p, now.date).length; });
+    return '<div class="themes" role="list">' + C.themes.filter(function (t) { return t.id !== 'limited' || anyLimited; }).map(function (t) {
+      return '<button type="button" role="listitem" class="theme" data-theme="' + t.id + '"><b>' + esc(t.title) + '</b><span>' + esc(t.desc) + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function renderList() {
+    var list = filtered();
+    var h = '';
+    if (S.near && byId[S.near]) {
+      var np = byId[S.near];
+      h += '<div class="nearbar" style="--c:' + catById[np.primaryCategory].color + '"><div><small>여기서 가까운 순</small><b>' + esc(np.name) + ' 근처</b></div>' +
+        '<button type="button" class="ghost" data-act="open" data-id="' + np.id + '">장소 보기</button>' +
+        '<button type="button" class="ghost" data-act="nearOff">해제</button></div>';
+    } else if (!hasFilters()) {
+      h += '<div class="hello"><h1>오늘 홍대, 뭐 하고 놀지?</h1><p>직접 골라 담은 ' + places.filter(visible).length +
+        '곳이에요. 핀을 누르거나 아래에서 골라 보세요.</p></div>' + themesBlock();
+    }
+    h += filterRow();
+    h += '<div class="listhead"><span class="count"><b>' + list.length + '</b>곳 · 가까운 순</span>' + (S.near ? '' : startSelect()) +
+      (hasFilters() ? '<button type="button" class="link" data-act="clear">필터 지우기</button>' : '') + '</div>';
+    if (list.length) {
+      h += '<ul class="plist">' + list.map(function (x) { return card(x); }).join('') + '</ul>';
+    } else {
+      h += '<div class="empty"><b>조건에 맞는 곳이 없어요.</b><p>' +
+        (S.quick.indexOf('open') >= 0 ? '지금 영업 중인 곳만 보고 있어요. ' : '') + '필터를 하나씩 풀어 보세요.</p>' +
+        '<button type="button" class="btn" data-act="clear">필터 지우기</button></div>';
+    }
+    var hc = hiddenCount();
+    if (hc) {
+      h += '<p class="hiddennote">' + (S.showHidden ? '운영 여부를 확인하지 못한 ' + hc + '곳도 함께 보고 있어요. ' : '운영 여부를 확인하지 못한 ' + hc + '곳은 목록에서 뺐어요. ') +
+        '<button type="button" class="link" data-act="toggleHidden">' + (S.showHidden ? '다시 숨기기' : '함께 보기') + '</button></p>';
+    }
+    h += footer();
+    el.body.innerHTML = h;
+  }
+  function footer() {
+    return '<footer class="foot"><p>정보 기준: ' + fmtDate(D.meta.researchedAt) + ' 웹 조사. 현장이나 전화로 확인한 정보는 아니에요. ' +
+      '가기 전에 네이버지도·카카오맵에서 영업 여부를 확인해 주세요.</p>' +
+      '<p>도보 시간은 직선거리로 어림한 값이에요. 지도 데이터 © OpenStreetMap 기여자.</p></footer>';
+  }
+  function fmtDate(s) { var a = s.split('-'); return a[0] + '년 ' + Number(a[1]) + '월 ' + Number(a[2]) + '일'; }
+
+  /* ---------- 장소 상세 ---------- */
+  function renderPlace(p) {
+    var c = catById[p.primaryCategory], v = STATUS[p.verificationStatus];
+    var o = startPoint(), min = walkFrom(o, p);
+    var h = '<article class="detail" style="--c:' + c.color + '">';
+    h += '<div class="d-nav"><button type="button" class="back" data-act="back">‹ 목록</button>' + heartBtn(p) + '</div>';
+    h += '<header class="d-head"><span class="d-cat"><span aria-hidden="true">' + c.icon + '</span>' + esc(c.label) + '</span>' +
+      '<h1>' + esc(p.name) + '</h1><p class="d-reason">' + esc(p.oneLineReason) + '</p>' +
+      '<div class="d-meta">' + statusChip(p) + '<span class="walk">' + esc(o.label.replace(/ \(.+\)/, '')) + '에서 도보 약 ' + min + '분</span>' +
+      (p.priceLevel ? '<span class="price">' + PRICE[p.priceLevel] + '</span>' : '') + '</div></header>';
+
+    h += '<div class="d-actions">' +
+      '<a class="btn map-n" href="' + U.naverUrl(p) + '" target="_blank" rel="noopener">네이버지도</a>' +
+      '<a class="btn map-k" href="' + U.kakaoUrl(p) + '" target="_blank" rel="noopener">카카오맵</a>' +
+      '<button type="button" class="btn near" data-act="near" data-id="' + p.id + '">이 근처 둘러보기</button></div>';
+
+    /* 확인이 필요한 점 */
+    var warn = [];
+    if (p.listed === false && p.hiddenReason) warn.push(p.hiddenReason);
+    (p.issues || []).forEach(function (i) { warn.push(i); });
+    if (p.verificationStatus === 'needs-check' || warn.length) {
+      h += '<section class="d-warn"><h2>' + (p.verificationStatus === 'needs-check' || p.listed === false ? '가기 전에 확인하세요' : '확인이 필요한 점') + '</h2><ul>' +
+        warn.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') +
+        (p.verificationStatus === 'needs-check' && !warn.length ? '<li>' + esc(v.desc) + '</li>' : '') + '</ul></section>';
+    }
+
+    /* 진행 중 행사 */
+    var ev = U.activeEvents(p, now.date);
+    if (ev.length) {
+      h += '<section class="d-sec"><h2>지금 하는 행사</h2><ul class="events">' + ev.map(function (e) {
+        var dd = e.until ? U.daysBetween(now.date, e.until) : null;
+        return '<li><span class="dday">' + (dd === 0 ? '오늘까지' : dd != null ? 'D-' + dd : '') + '</span><div><b>' + esc(e.title) + '</b><small>' +
+          esc([e.kind, e.where, e.until ? Number(e.until.slice(5, 7)) + '월 ' + Number(e.until.slice(8)) + '일까지' : '', e.hours].filter(Boolean).join(' · ')) + '</small>' +
+          (e.url ? '<a href="' + esc(e.url) + '" target="_blank" rel="noopener">행사 안내 보기</a>' : '') + '</div></li>';
+      }).join('') + '</ul></section>';
+    }
+
+    h += '<p class="d-desc">' + esc(p.description) + '</p>';
+
+    /* 후기 요약 */
+    h += '<section class="d-sec review"><h2>후기에서 확인된 점</h2>';
+    var r = p.review;
+    if (r && (r.pros || []).length) {
+      h += '<p class="r-basis">공개 후기 ' + r.sourceCount + '건을 읽고 반복되는 내용만 요약했어요 · 조사 ' + esc(r.checkedAt) +
+        (r.sourceCount < 2 ? ' · <b>근거가 적어요</b>' : '') + '</p>';
+      if (r.note) h += '<p class="r-note">' + esc(r.note) + '</p>';
+      h += rlist('좋다는 말', 'pros', r.pros) + rlist('아쉽다는 말', 'cons', r.cons) +
+        rlist('이런 사람에게', 'for', r.goodFor) + rlist('알아두면 좋은 것', 'prac', r.practical);
+      h += '<details class="r-src"><summary>요약에 쓴 후기 원문 ' + r.sources.length + '건</summary><ul>' +
+        r.sources.map(function (s) { return '<li><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + '</a></li>'; }).join('') + '</ul></details>';
+    } else {
+      h += '<p class="r-basis">근거로 삼을 만한 후기를 충분히 모으지 못해 요약하지 않았어요.</p>';
+    }
+    h += '<div class="r-more"><span>후기 더 보기</span><a href="' + U.naverUrl(p) + '" target="_blank" rel="noopener">네이버지도</a>' +
+      '<a href="' + U.kakaoUrl(p) + '" target="_blank" rel="noopener">카카오맵</a>' +
+      '<a href="' + U.blogSearchUrl(p) + '" target="_blank" rel="noopener">블로그 검색</a></div></section>';
+
+    /* 기본 정보 */
+    h += '<section class="d-sec"><h2>영업시간</h2><table class="hours"><tbody>' + U.weekRows(p).map(function (row) {
+      return '<tr' + (row.key === now.day ? ' class="today"' : '') + '><th scope="row">' + row.label + (row.key === now.day ? ' (오늘)' : '') + '</th><td>' + esc(row.text) + '</td></tr>';
+    }).join('') + '</tbody></table>' + (p.hoursNote ? '<p class="note">' + esc(p.hoursNote) + '</p>' : '') + '</section>';
+
+    var info = [];
+    info.push(['주소', p.address + (p.floor && p.address.indexOf(p.floor) < 0 ? ' · ' + p.floor : '')]);
+    if (p.nearestExit) info.push(['가까운 출구', p.nearestExit + ' (출처 표기)']);
+    if (p.entranceTip) info.push(['찾아가는 팁', p.entranceTip]);
+    info.push(['지도 위치', p.location.accuracy === 'exact' ? '정확한 위치' + (p.location.note ? ' · ' + p.location.note : '') :
+      (p.location.manual ? '추정 위치 (오차가 클 수 있어요)' : '근사 위치 (건물·도로 단위)') + (p.location.note ? ' · ' + p.location.note : '')]);
+    if (p.priceNote) info.push(['가격', p.priceNote]);
+    if (p.stayMinutes) info.push(['머무는 시간', p.stayMinutes[0] + '~' + p.stayMinutes[1] + '분 (편집자 어림값)']);
+    if (p.reservation) info.push(['예약', RESV[p.reservation]]);
+    if (p.waiting) info.push(['웨이팅', WAIT[p.waiting] + ' (후기 기준)']);
+    if (p.paymentNote) info.push(['결제', p.paymentNote]);
+    var d = p.details || {};
+    if (d.works && d.works.length) info.push(['주요 작품', d.works.join(', ')]);
+    if (d.styleKeywords && d.styleKeywords.length) info.push(['스타일', d.styleKeywords.join(', ')]);
+    if (d.signatureMenu) info.push(['대표 메뉴', [].concat(d.signatureMenu).join(', ')]);
+    if (d.seating) info.push(['좌석', d.seating]);
+    if (d.pricePerPerson) info.push(['1인 가격', d.pricePerPerson]);
+    if (d.duration) info.push(['소요 시간', d.duration]);
+    if (d.takeHomeResult != null) info.push(['결과물', d.takeHomeResult === true ? '당일 가져갈 수 있어요' : d.takeHomeResult === false ? '당일 수령 안 돼요' : d.takeHomeResult]);
+    h += '<section class="d-sec"><h2>기본 정보</h2><dl class="info">' + info.map(function (r) {
+      return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>';
+    }).join('') + '</dl></section>';
+
+    var t = p.traits || {}, tk = Object.keys(TRAITS).filter(function (k) { return t[k]; });
+    if (tk.length) {
+      h += '<section class="d-sec"><h2>한눈에 보기</h2><dl class="traits">' + Object.keys(TRAITS).map(function (k) {
+        return '<div><dt>' + TRAITS[k][0] + '</dt><dd' + (t[k] ? '' : ' class="none"') + '>' + (t[k] ? TRAITS[k][1][t[k]] : '정보 부족') + '</dd></div>';
+      }).join('') + '</dl><p class="note">몇몇 후기를 바탕으로 한 판단이에요. 근거가 없는 항목은 비워 뒀어요.</p></section>';
+    }
+
+    if ((p.tags || []).length) {
+      h += '<div class="d-tags">' + p.tags.map(function (tg) { return '<button type="button" class="chip tag" data-tag="' + esc(tg) + '">#' + esc(tg) + '</button>'; }).join('') + '</div>';
+    }
+
+    /* 근처 */
+    var nb = nearbyOf(p);
+    h += '<section class="d-sec"><h2>근처에 같이 들를 곳</h2>';
+    if (nb.length) {
+      h += '<ul class="plist compact">' + nb.map(function (x) { return card(x, { walkLabel: '여기서 ' + x.min + '분' }); }).join('') + '</ul>' +
+        '<button type="button" class="btn wide" data-act="near" data-id="' + p.id + '">이 근처 전부 보기</button>';
+    } else {
+      h += '<p class="note">도보 ' + C.walk.nearbyMaxMinutes + '분 안에 담아 둔 곳이 없어요.</p>';
+    }
+    h += '</section>';
+
+    /* 출처 */
+    h += '<section class="d-sec src"><h2>정보 출처</h2><p class="vline"><span class="vb ' + v.cls + '">' + v.label + '</span> 조사 ' + esc(p.checkedAt) +
+      (p.verifiedAt ? ' · 확인 ' + esc(p.verifiedAt) : '') + '</p><p class="note">' + esc(v.desc) + '</p><ul>' +
+      p.sources.map(function (s) {
+        return '<li><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + '</a>' + (s.note ? '<small>' + esc(s.note) + '</small>' : '') + '</li>';
+      }).join('') + '</ul>' + linkRow(p) + '</section>';
+    h += '</article>';
+    el.body.innerHTML = h;
+  }
+  function rlist(title, cls, arr) {
+    if (!arr || !arr.length) return '';
+    return '<div class="r-block r-' + cls + '"><h3>' + title + '</h3><ul>' + arr.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+  }
+  function linkRow(p) {
+    var l = p.links || {}, out = [];
+    if (l.official) out.push('<a href="' + esc(l.official) + '" target="_blank" rel="noopener">공식 홈페이지</a>');
+    if (l.instagram) out.push('<a href="' + esc(l.instagram) + '" target="_blank" rel="noopener">인스타그램</a>');
+    if (l.x) out.push('<a href="' + esc(l.x) + '" target="_blank" rel="noopener">X(트위터)</a>');
+    return out.length ? '<div class="r-more"><span>공식 채널</span>' + out.join('') + '</div>' : '';
+  }
+
+  /* ---------- 저장 / 받은 목록 ---------- */
+  function renderSaved(shared) {
+    var ids = shared ? S.shareIds : S.saved;
+    var h = '<div class="d-nav"><button type="button" class="back" data-act="back">‹ 목록</button></div>';
+    h += '<div class="savedhead"><h1>' + (shared ? '친구가 보낸 장소 ' + ids.length + '곳' : '내가 고른 곳') + '</h1>';
+    if (!ids.length) {
+      h += '</div><div class="empty"><b>아직 저장한 곳이 없어요.</b><p>장소 카드의 하트를 누르면 여기에 모여요. 저장은 이 기기 브라우저에만 남아요.</p>' +
+        '<button type="button" class="btn" data-act="back">장소 둘러보기</button></div>';
+      el.body.innerHTML = h; return;
+    }
+    var co = courseOrder(ids);
+    var stayMin = 0, stayMax = 0;
+    co.list.forEach(function (x) { if (x.p.stayMinutes) { stayMin += x.p.stayMinutes[0]; stayMax += x.p.stayMinutes[1]; } });
+    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서예요. 걷는 시간 약 ' + co.totalWalk + '분, 머무는 시간 ' +
+      hm(stayMin) + '~' + hm(stayMax) + ' (어림값).</p></div>';
+    h += '<ol class="plist course">' + co.list.map(function (x, i) {
+      return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분' });
+    }).join('') + '</ol>';
+    if (shared) {
+      h += '<div class="savedacts"><button type="button" class="btn primary" data-act="importShared">내 저장에 모두 추가</button></div>';
+    } else {
+      h += '<div class="savedacts">' +
+        '<button type="button" class="btn primary" data-act="copyText">단톡방용 글 복사</button>' +
+        '<button type="button" class="btn" data-act="copyLink">공유 링크 복사</button>' +
+        '<button type="button" class="btn quiet" data-act="clearSaved">모두 지우기</button></div>' +
+        '<p class="note">저장 목록은 이 기기 브라우저에만 남아요. 친구에게는 공유 링크나 단톡방용 글로 보내 주세요.</p>';
+    }
+    el.body.innerHTML = h;
+  }
+  function hm(m) { return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'; }
+  function shareUrl(ids) {
+    var base = window.location.href.split('#')[0].replace(/([?&])now=[^&]*&?/, '$1').replace(/[?&]$/, '');
+    return base + '#share--' + ids.join('--');
+  }
+  function shareText() {
+    var co = courseOrder(S.saved);
+    var lines = ['[홍대 느슨지도] 오늘 갈 곳 ' + co.list.length + '곳', ''];
+    co.list.forEach(function (x, i) {
+      lines.push((i + 1) + '. ' + x.p.name + ' (' + catById[x.p.primaryCategory].label + ')');
+      lines.push('   ' + x.p.oneLineReason);
+      lines.push('   ' + U.naverUrl(x.p));
+    });
+    lines.push('', '지도로 같이 보기: ' + shareUrl(S.saved));
+    return lines.join('\n');
+  }
+
+  /* ---------- 지도 표시 ---------- */
+  function renderMap() {
+    var items = [], sel = S.view === 'place' ? S.placeId : null;
+    if (S.view === 'saved' || S.view === 'share') {
+      var co = courseOrder(S.view === 'saved' ? S.saved : S.shareIds);
+      co.list.forEach(function (x, i) { items.push(markerFor(x.p, { number: i + 1 })); });
+      var pts = [[startPoint().lat, startPoint().lng]].concat(co.list.map(function (x) { return [x.p.location.lat, x.p.location.lng]; }));
+      M.showRoute(pts); M.clearRings();
+    } else {
+      var list = filtered().map(function (x) { return x.p; });
+      if (S.near && byId[S.near]) list.push(byId[S.near]);
+      if (sel && list.indexOf(byId[sel]) < 0) list.push(byId[sel]);
+      list.forEach(function (p) { items.push(markerFor(p, { selected: p.id === sel || p.id === S.near })); });
+      M.clearRoute();
+      if (S.near && byId[S.near] && S.view === 'list') {
+        var np = byId[S.near].location; M.showRings(np.lat, np.lng, C.walk.rings, C.walk);
+      } else M.clearRings();
+    }
+    M.setMarkers(items);
+  }
+  function markerFor(p, o) {
+    var c = catById[p.primaryCategory], dp = displayPos[p.id];
+    return {
+      id: p.id, lat: dp[0], lng: dp[1], color: c.color, icon: c.icon, label: p.shortName || p.name,
+      selected: !!o.selected, saved: S.saved.indexOf(p.id) >= 0, number: o.number,
+      dim: U.openState(p, now).code === 'closed', warn: p.verificationStatus === 'needs-check' || p.listed === false
+    };
+  }
+  function fitCurrent() {
+    if (S.view === 'place' && byId[S.placeId]) {
+      var l = byId[S.placeId].location; M.focus(l.lat, l.lng, 16); return;
+    }
+    if (S.view === 'saved' || S.view === 'share') {
+      var ids = S.view === 'saved' ? S.saved : S.shareIds;
+      M.fitTo(ids.map(function (id) { return displayPos[id]; }).filter(Boolean)); return;
+    }
+    if (S.near && byId[S.near]) {
+      var n = byId[S.near].location, r = C.walk.rings[C.walk.rings.length - 1] * C.walk.metersPerMinute / C.walk.detour;
+      M.fitTo([[n.lat + r / 111320, n.lng], [n.lat - r / 111320, n.lng], [n.lat, n.lng + r / 88200], [n.lat, n.lng - r / 88200]]);
+      return;
+    }
+    M.fitTo(filtered().map(function (x) { return displayPos[x.p.id]; }));
+  }
+
+  /* ---------- 바텀시트 (휴대폰) / 왼쪽 패널 (넓은 화면) ---------- */
+  var desktopMQ = window.matchMedia('(min-width: 900px)');
+  function isDesktop() { return desktopMQ.matches; }
+  function topH() { return el.topbar.getBoundingClientRect().bottom; }
+  function heights() {
+    var H = el.app.clientHeight, top = topH();
+    return { peek: 112, half: Math.round(H * 0.48), full: Math.max(200, H - top - 6), H: H };
+  }
+  function setSheet(state, instant) {
+    S.sheet = state;
+    el.sheet.dataset.state = state;
+    document.documentElement.style.setProperty('--topH', Math.round(topH()) + 'px');
+    if (isDesktop()) { el.sheet.style.height = ''; return; }
+    var hts = heights();
+    el.sheet.classList.toggle('instant', !!instant);
+    el.sheet.style.height = hts[state] + 'px';
+    el.mapCtl.style.bottom = (Math.min(hts[state], hts.half) + 12) + 'px';
+  }
+  function getPadding() {
+    if (isDesktop()) return { top: 0, bottom: 0, left: el.sheet.getBoundingClientRect().right };
+    var hts = heights();
+    return { top: topH(), bottom: Math.min(hts[S.sheet] || hts.half, hts.half), left: 0 };
+  }
+  (function dragSheet() {
+    var startY = 0, startH = 0, lastY = 0, lastT = 0, vel = 0, dragging = false, moved = false;
+    el.grab.addEventListener('pointerdown', function (e) {
+      if (isDesktop()) return;
+      dragging = true; moved = false; startY = lastY = e.clientY; lastT = performance.now();
+      startH = el.sheet.getBoundingClientRect().height;
+      el.sheet.classList.add('instant');
+      try { el.grab.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    el.grab.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var dy = e.clientY - startY;
+      if (Math.abs(dy) > 5) moved = true;
+      var hts = heights();
+      var h = Math.max(hts.peek - 30, Math.min(hts.full, startH - dy));
+      el.sheet.style.height = h + 'px';
+      var t = performance.now();
+      vel = (e.clientY - lastY) / Math.max(1, t - lastT); lastY = e.clientY; lastT = t;
+    });
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      el.sheet.classList.remove('instant');
+      if (!moved) { setSheet(S.sheet === 'peek' ? 'half' : S.sheet === 'half' ? 'full' : 'half'); return; }
+      var hts = heights(), h = el.sheet.getBoundingClientRect().height;
+      var target;
+      if (vel > 0.6) target = h > hts.half ? 'half' : 'peek';
+      else if (vel < -0.6) target = h < hts.half ? 'half' : 'full';
+      else target = ['peek', 'half', 'full'].sort(function (a, b) { return Math.abs(hts[a] - h) - Math.abs(hts[b] - h); })[0];
+      setSheet(target);
+    }
+    el.grab.addEventListener('pointerup', end);
+    el.grab.addEventListener('pointercancel', end);
+    el.grab.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(S.sheet === 'full' ? 'half' : 'full'); }
+    });
+  })();
+
+  /* ---------- 라우팅 (주소 # 뒷부분) ---------- */
+  function parseHash() {
+    var h = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+    if (h.indexOf('p-') === 0 && byId[h.slice(2)]) return { view: 'place', id: h.slice(2) };
+    if (h === 'saved') return { view: 'saved' };
+    if (h.indexOf('share--') === 0) return { view: 'share', ids: h.slice(7).split('--').filter(function (id) { return byId[id]; }) };
+    return { view: 'list' };
+  }
+  function nav(hash) {
+    if (S.view === 'list') S.listScroll = el.body.scrollTop;
+    S.depth++;
+    if (window.location.hash.replace(/^#/, '') === hash) route();
+    else window.location.hash = hash;
+  }
+  function goBack() {
+    if (S.depth > 0) { S.depth -= 2; window.history.back(); }
+    else { S.depth = -1; window.location.hash = ''; }
+  }
+  function route(opts) {
+    var r = parseHash();
+    var prev = S.view;
+    S.view = r.view;
+    S.placeId = r.id || null;
+    if (r.view === 'share') S.shareIds = r.ids;
+    render();
+    if (r.view === 'list' && prev !== 'list') el.body.scrollTop = S.listScroll;
+    else if (r.view !== 'list') el.body.scrollTop = 0;
+    if (r.view !== 'list' && S.sheet === 'peek') setSheet('half');
+    if (!(opts && opts.noFit)) fitCurrent();
+    S.depth = Math.max(0, S.depth);
+  }
+
+  function render() {
+    now = U.seoulNow();
+    renderCats();
+    el.savedCount.textContent = S.saved.length;
+    el.savedBtn.classList.toggle('has', S.saved.length > 0);
+    el.qClear.hidden = !S.q;
+    if (S.view === 'place' && byId[S.placeId]) renderPlace(byId[S.placeId]);
+    else if (S.view === 'saved') renderSaved(false);
+    else if (S.view === 'share') renderSaved(true);
+    else renderList();
+    renderMap();
+  }
+  /* 목록 조건이 바뀌었을 때: 목록 화면으로 가서 결과를 지도에 맞춰 보여 줌 */
+  function refine() {
+    if (S.view !== 'list') { S.listScroll = 0; S.depth = 0; window.location.hash = ''; return; }
+    render(); el.body.scrollTop = 0; fitCurrent();
+  }
+
+  /* ---------- 동작 ---------- */
+  function toggleSave(id) {
+    var i = S.saved.indexOf(id);
+    if (i >= 0) S.saved.splice(i, 1); else S.saved.push(id);
+    var ok = store(C.storageKeys.saved, S.saved);
+    if (!ok && !S.storageWarned) { S.storageWarned = true; toast('이 브라우저에서는 저장이 유지되지 않아요. 창을 닫으면 사라질 수 있어요.'); }
+    else toast(i >= 0 ? '저장에서 뺐어요' : '저장했어요 · 위쪽 하트에서 모아 볼 수 있어요');
+    var keep = el.body.scrollTop;
+    render(); el.body.scrollTop = keep;
+  }
+  function setNear(id) {
+    S.near = id; S.cats = []; S.quick = []; S.tag = null; S.q = ''; el.q.value = '';
+    S.listScroll = 0;
+    if (S.view !== 'list') { S.depth = 0; window.location.hash = ''; }
+    else { render(); fitCurrent(); }
+    if (!isDesktop()) setSheet('half');
+  }
+  function applyTheme(id) {
+    var t = C.themes.filter(function (x) { return x.id === id; })[0];
+    if (!t) return;
+    S.cats = (t.cats || []).slice(); S.quick = (t.quick || []).slice(); S.tag = (t.tags || [])[0] || null;
+    refine();
+    toast(t.title + ' · ' + filtered().length + '곳');
+  }
+  function clearFilters() {
+    S.cats = []; S.quick = []; S.tag = null; S.q = ''; el.q.value = '';
+    refine();
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    el.toast.textContent = msg; el.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.hidden = true; }, 2600);
+  }
+  function modal(html) {
+    el.modal.innerHTML = '<div class="modal-box" role="dialog" aria-modal="true">' + html + '</div>';
+    el.modal.hidden = false;
+  }
+  function closeModal() { el.modal.hidden = true; el.modal.innerHTML = ''; }
+  function copy(text, okMsg) {
+    function manual() {
+      modal('<h2>직접 복사해 주세요</h2><p>이 브라우저에서는 자동 복사가 막혀 있어요. 아래 글을 길게 눌러 전체 선택 후 복사하세요.</p>' +
+        '<textarea id="copyArea" readonly rows="8">' + esc(text) + '</textarea><div class="modal-acts"><button type="button" class="btn primary" data-act="closeModal">닫기</button></div>');
+      var ta = $('copyArea'); ta.focus(); ta.select();
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, manual);
+      } else manual();
+    } catch (e) { manual(); }
+  }
+  function locate() {
+    if (!navigator.geolocation) { toast('이 브라우저는 위치 기능을 지원하지 않아요. 역 출구 기준으로 계산할게요.'); return; }
+    toast('내 위치를 찾는 중…');
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      var center = { lat: C.map.center[0], lng: C.map.center[1] };
+      if (U.distance(me, center) > 4000) { toast('홍대에서 멀리 있어서 역 출구 기준을 그대로 쓸게요.'); return; }
+      S.me = me; S.start = 'me'; S.near = null;
+      M.showMe(me.lat, me.lng);
+      render(); M.focus(me.lat, me.lng, 16);
+      toast('내 위치에서 가까운 순으로 정렬했어요');
+    }, function () {
+      toast('위치 권한이 없어 역 출구 기준으로 계산해요.');
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }
+
+  /* 이벤트 연결 */
+  el.cats.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cat]'); if (!b) return;
+    var id = b.getAttribute('data-cat');
+    if (!id) S.cats = [];
+    else {
+      var i = S.cats.indexOf(id);
+      if (i >= 0) S.cats.splice(i, 1); else S.cats.push(id);
+      if (S.cats.length === C.categories.length) S.cats = [];
+    }
+    refine();
+  });
+  var qTimer;
+  el.q.addEventListener('input', function () {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(function () {
+      S.q = el.q.value.trim();
+      if (S.q) S.near = null;
+      refine();
+      if (!isDesktop() && S.sheet === 'peek') setSheet('half');
+    }, 120);
+  });
+  el.q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { el.q.blur(); } });
+  el.qClear.addEventListener('click', function () { el.q.value = ''; S.q = ''; refine(); el.q.focus(); });
+  el.savedBtn.addEventListener('click', function () { nav('saved'); });
+  el.locBtn.addEventListener('click', locate);
+  el.zoneMenu.innerHTML = C.zones.map(function (z) { return '<button type="button" data-zone="' + z.id + '">' + esc(z.label) + '</button>'; }).join('');
+  el.zoneBtn.addEventListener('click', function () {
+    var open = el.zoneMenu.hidden; el.zoneMenu.hidden = !open; el.zoneBtn.setAttribute('aria-expanded', String(open));
+  });
+  el.zoneMenu.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-zone]'); if (!b) return;
+    var z = C.zones.filter(function (x) { return x.id === b.getAttribute('data-zone'); })[0];
+    el.zoneMenu.hidden = true; el.zoneBtn.setAttribute('aria-expanded', 'false');
+    M.goZone(z);
+  });
+
+  el.body.addEventListener('change', function (e) {
+    if (e.target.id === 'startSel') {
+      S.start = e.target.value;
+      if (S.start !== 'me') store(C.storageKeys.start, S.start);
+      render();
+    }
+  });
+  function onAction(e) {
+    var t = e.target.closest('[data-act],[data-quick],[data-tag],[data-theme]');
+    if (!t) return;
+    if (t.hasAttribute('data-quick')) {
+      var qid = t.getAttribute('data-quick'), i = S.quick.indexOf(qid);
+      if (i >= 0) S.quick.splice(i, 1); else S.quick.push(qid);
+      refine(); return;
+    }
+    if (t.hasAttribute('data-tag')) {
+      var tg = t.getAttribute('data-tag');
+      S.tag = S.tag === tg ? null : tg; S.near = null;
+      refine(); return;
+    }
+    if (t.hasAttribute('data-theme')) { applyTheme(t.getAttribute('data-theme')); return; }
+    var act = t.getAttribute('data-act'), id = t.getAttribute('data-id');
+    if (act === 'open') nav('p-' + id);
+    else if (act === 'save') toggleSave(id);
+    else if (act === 'back') goBack();
+    else if (act === 'near') setNear(id);
+    else if (act === 'nearOff') { S.near = null; render(); fitCurrent(); }
+    else if (act === 'clear') clearFilters();
+    else if (act === 'toggleHidden') { S.showHidden = !S.showHidden; render(); }
+    else if (act === 'copyText') copy(shareText(), '단톡방에 붙여 넣으면 돼요');
+    else if (act === 'copyLink') copy(shareUrl(S.saved), '공유 링크를 복사했어요');
+    else if (act === 'clearSaved') {
+      modal('<h2>저장한 ' + S.saved.length + '곳을 모두 지울까요?</h2><p>이 기기에 저장된 목록이 사라져요.</p><div class="modal-acts">' +
+        '<button type="button" class="btn" data-act="closeModal">취소</button><button type="button" class="btn danger" data-act="doClear">모두 지우기</button></div>');
+    } else if (act === 'doClear') { S.saved = []; store(C.storageKeys.saved, S.saved); closeModal(); render(); toast('저장 목록을 비웠어요'); }
+    else if (act === 'closeModal') closeModal();
+    else if (act === 'importShared') {
+      var added = 0;
+      S.shareIds.forEach(function (sid) { if (S.saved.indexOf(sid) < 0) { S.saved.push(sid); added++; } });
+      store(C.storageKeys.saved, S.saved);
+      toast(added ? added + '곳을 내 저장에 추가했어요' : '이미 모두 저장돼 있어요');
+      S.depth = 0; window.location.hash = 'saved';
+    }
+  }
+  el.body.addEventListener('click', onAction);
+  el.modal.addEventListener('click', function (e) { if (e.target === el.modal) closeModal(); else onAction(e); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { if (!el.modal.hidden) closeModal(); else if (S.view !== 'list') goBack(); }
+  });
+  window.addEventListener('hashchange', function () { route(); });
+  window.addEventListener('resize', function () { setSheet(S.sheet, true); M.invalidate(); });
+  desktopMQ.addEventListener && desktopMQ.addEventListener('change', function () { setSheet(S.sheet, true); M.invalidate(); });
+  setInterval(function () { var k = el.body.scrollTop; render(); el.body.scrollTop = k; }, 60000);
+
+  /* ---------- 시작 ---------- */
+  var MAP_DEBUG = /[?&]mapdebug\b/.test(location.search);  // 주소 끝에 ?mapdebug 를 붙이면 지도 배경 진단을 계속 보여 줌
+  M.init(document.getElementById('map'), C, {
+    getPadding: getPadding,
+    onPick: function (id) { if (S.view === 'place' && S.placeId === id) return; nav('p-' + id); },
+    onMapClick: function () { if (!el.zoneMenu.hidden) { el.zoneMenu.hidden = true; } },
+    onTilesFailed: function (log) {
+      /* v0.2.1: 왜 실패했는지 상황별로 알려 준다 */
+      var msg, blocked = (log || []).filter(function (d) { return d.result === 'blocked'; });
+      if (window.HM_PREVIEW) {
+        msg = 'Claude 미리보기 창에서는 지도 배경 그림을 불러오지 못해 간단한 지도로 보여요. 실제 지도는 일반 브라우저에서 확인해 주세요.';
+      } else if (location.protocol === 'file:') {
+        msg = '파일을 직접 열면 지도 서버가 요청을 거절할 수 있어요. 폴더의 "지도 실행하기(Windows).bat"으로 열어 주세요.';
+      } else if (blocked.length) {
+        msg = '지도 서버가 요청을 거절했어요(' + blocked.map(function (d) { return d.id + ' ' + d.detail; }).join(', ') + '). 간단한 지도로 보여 드려요.';
+      } else {
+        msg = '지도 배경을 못 불러와 간단한 지도로 보여 드려요. 인터넷 연결을 확인해 주세요.';
+      }
+      if (MAP_DEBUG) return;
+      el.mapNote.hidden = false;
+      el.mapNote.textContent = msg;
+      setTimeout(function () { el.mapNote.hidden = true; }, 12000);
+    },
+    onTilesOk: function () {
+      if (location.protocol !== 'file:' || MAP_DEBUG) return;
+      el.mapNote.hidden = false;
+      el.mapNote.textContent = '파일을 직접 열었어요. 지도에 경고 글자가 보이면 "지도 실행하기" 파일로 다시 열어 주세요.';
+      setTimeout(function () { el.mapNote.hidden = true; }, 10000);
+    },
+    onDiag: function (log) {
+      if (!MAP_DEBUG) return;
+      el.mapNote.hidden = false;
+      el.mapNote.textContent = '[지도 진단] 주소 형식: ' + location.protocol + ' / ' +
+        log.map(function (d) { return d.id + ' ' + d.step + ': ' + d.result + (d.detail ? ' (' + d.detail + ')' : ''); }).join(' · ');
+    }
+  });
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () {
+      document.documentElement.style.setProperty('--topH', Math.round(topH()) + 'px');
+    }).observe(el.topbar);
+  }
+  setSheet('half', true);
+  route();
+})();
+
+</script>

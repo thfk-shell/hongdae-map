@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>홍대 느슨지도</title>
+<meta name="description" content="홍대·연남·상수·합정에서 친구들과 갈 곳을 고르는 큐레이션 지도">
+<meta name="theme-color" content="#F4F5F0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<!--BUILD:LEAFLET_CSS--><link rel="stylesheet" href="vendor/leaflet/leaflet.css"><!--/BUILD-->
+<!--BUILD:APP_CSS--><link rel="stylesheet" href="css/style.css"><!--/BUILD-->
+</head>
+<body>
+<div id="app">
+  <header class="topbar" id="topbar">
+    <div class="searchrow">
+      <label class="search" for="q">
+        <span class="brand" aria-hidden="true">느슨<br>지도</span>
+        <input id="q" type="search" placeholder="장소, 작품, 태그 검색 (예: 치이카와, 가챠)" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="search-clear" id="qClear" aria-label="검색어 지우기" hidden>×</button>
+      </label>
+      <button type="button" class="savedbtn" id="savedBtn" aria-label="저장한 장소">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>
+        <span id="savedCount">0</span>
+      </button>
+    </div>
+    <div class="cats" id="cats" role="group" aria-label="카테고리"></div>
+  </header>
+
+  <div id="map" class="map" aria-label="홍대 지도"></div>
+  <div class="mapnote" id="mapNote" hidden></div>
+
+  <div class="mapctl" id="mapCtl">
+    <button type="button" id="zoneBtn" aria-haspopup="true" aria-expanded="false">동네</button>
+    <button type="button" id="locBtn" aria-label="내 위치를 기준으로">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="7" fill="none" stroke-width="2"/></svg>
+    </button>
+    <div class="zonemenu" id="zoneMenu" hidden></div>
+  </div>
+
+  <section class="sheet" id="sheet" aria-label="장소 목록">
+    <div class="grab" id="grab">
+      <div class="handle" aria-hidden="true"></div>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="modal" id="modal" hidden></div>
+</div>
+
+<!--BUILD:LEAFLET_JS--><script src="vendor/leaflet/leaflet.js"></script><!--/BUILD-->
+<!--BUILD:DATA--><script src="data/settings.js"></script>
+<script src="data/places.js"></script><!--/BUILD-->
+<!--BUILD:APP_JS--><script src="js/util.js"></script>
+<script src="js/map.js"></script>
+<script src="js/app.js"></script><!--/BUILD-->
+</body>
+</html>
