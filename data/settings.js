@@ -270,11 +270,35 @@ window.HM_SETTINGS = {
     ],
     "tiles": [
       {
+        "id": "vworld",
+        "name": "브이월드 기본 지도",
+        "needsKey": "vworld",
+        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png",
+        "subdomains": "",
+        "minNativeZoom": 6,
+        "maxNativeZoom": 19,
+        "credit": "지도: 브이월드(국토교통부)",
+        "attribution": "&copy; <a href=\"https://www.vworld.kr\" target=\"_blank\" rel=\"noopener\">브이월드</a> 국토교통부"
+      },
+      {
+        "id": "gray",
+        "name": "브이월드 회색 지도",
+        "needsKey": "vworld",
+        "optIn": true,
+        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/gray/{z}/{y}/{x}.png",
+        "subdomains": "",
+        "minNativeZoom": 6,
+        "maxNativeZoom": 18,
+        "credit": "지도: 브이월드(국토교통부)",
+        "attribution": "&copy; <a href=\"https://www.vworld.kr\" target=\"_blank\" rel=\"noopener\">브이월드</a> 국토교통부"
+      },
+      {
         "id": "osm",
         "name": "OpenStreetMap 기본 지도",
         "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         "subdomains": "",
         "maxNativeZoom": 19,
+        "credit": "지도 데이터 © OpenStreetMap 기여자",
         "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> 기여자"
       },
       {
@@ -283,6 +307,7 @@ window.HM_SETTINGS = {
         "url": "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
         "subdomains": "abcd",
         "maxNativeZoom": 20,
+        "credit": "지도 데이터 © OpenStreetMap 기여자, CARTO",
         "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> 기여자 &copy; <a href=\"https://carto.com/attributions\" target=\"_blank\" rel=\"noopener\">CARTO</a>"
       }
     ]

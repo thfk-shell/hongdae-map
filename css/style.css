@@ -62,6 +62,9 @@ a { color: var(--mid); }
   linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 48px 48px, var(--paper); }
 .leaflet-control-attribution { font-size: 10px; background: color-mix(in srgb, var(--surface) 80%, transparent) !important; color: var(--muted); }
 .leaflet-control-attribution a { color: var(--muted); }
+/* v0.3: 출처 표시는 오른쪽 위, 검색창·카테고리 줄 바로 아래 */
+.leaflet-top.leaflet-right { top: var(--topH, 112px); }
+.leaflet-top .leaflet-control-attribution { margin: 4px 6px 0 0; border-radius: 6px; padding: 1px 6px; }
 .leaflet-control-scale { margin-left: 10px !important; margin-bottom: 6px !important; }
 .leaflet-control-scale-line { background: color-mix(in srgb, var(--surface) 75%, transparent); border-color: var(--ink); color: var(--ink); }
 .mapnote {
@@ -332,6 +335,7 @@ a { color: var(--mid); }
   .grab { display: none; }
   .sheet-body { padding-top: 8px; }
   .mapctl { bottom: 24px !important; }
+  .leaflet-top.leaflet-right { top: 0; }
   .toast, .mapnote { left: calc(420px + (100% - 420px) / 2); top: 20px; }
 }
 

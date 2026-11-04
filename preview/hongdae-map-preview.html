@@ -1,4 +1,4 @@
-<title>홍대 느슨지도 v0.2.1</title>
+<title>홍대 느슨지도</title>
 <meta name="description" content="홍대·연남·상수·합정에서 친구들과 갈 곳을 고르는 큐레이션 지도">
 <meta name="theme-color" content="#F4F5F0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -733,6 +733,9 @@ a { color: var(--mid); }
   linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 48px 48px, var(--paper); }
 .leaflet-control-attribution { font-size: 10px; background: color-mix(in srgb, var(--surface) 80%, transparent) !important; color: var(--muted); }
 .leaflet-control-attribution a { color: var(--muted); }
+/* v0.3: 출처 표시는 오른쪽 위, 검색창·카테고리 줄 바로 아래 */
+.leaflet-top.leaflet-right { top: var(--topH, 112px); }
+.leaflet-top .leaflet-control-attribution { margin: 4px 6px 0 0; border-radius: 6px; padding: 1px 6px; }
 .leaflet-control-scale { margin-left: 10px !important; margin-bottom: 6px !important; }
 .leaflet-control-scale-line { background: color-mix(in srgb, var(--surface) 75%, transparent); border-color: var(--ink); color: var(--ink); }
 .mapnote {
@@ -1003,6 +1006,7 @@ a { color: var(--mid); }
   .grab { display: none; }
   .sheet-body { padding-top: 8px; }
   .mapctl { bottom: 24px !important; }
+  .leaflet-top.leaflet-right { top: 0; }
   .toast, .mapnote { left: calc(420px + (100% - 420px) / 2); top: 20px; }
 }
 
@@ -1056,6 +1060,17 @@ a { color: var(--mid); }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 window.HM_PREVIEW = true; // 미리보기 표시: 지도 배경이 막힌 이유를 정확히 안내
+/* 지도 서비스 인증키 넣는 곳.
+   - 브이월드(VWorld) 인증키를 발급받으면 아래 '' 사이에 붙여 넣어요. 예: vworld: 'ABCD1234-....'
+   - 비어 있으면 브이월드를 건너뛰고 예전 지도(OpenStreetMap)를 보여 줘요.
+   - 이 키는 웹 브라우저가 지도 그림을 받을 때 그대로 보이는 "공개용 키"예요. 그래서 꼭
+     브이월드에서 "서비스 URL(이 사이트 주소)"을 등록해 다른 사이트에서는 못 쓰게 막아 두세요.
+   - 파일을 고치지 않고 시험만 하려면 주소 끝에 ?vwkey=발급키 를 붙여 한 번 열면 돼요.
+     (키는 그 브라우저에만 저장되고 주소창에서는 바로 지워져요. 지우려면 ?vwkey=clear) */
+window.HM_MAP_KEYS = {
+  vworld: ''
+};
+
 /* 카테고리·태그·테마·기준점·지도 설정 */
 window.HM_SETTINGS = {
   "appName": "홍대 느슨지도",
@@ -1328,11 +1343,35 @@ window.HM_SETTINGS = {
     ],
     "tiles": [
       {
+        "id": "vworld",
+        "name": "브이월드 기본 지도",
+        "needsKey": "vworld",
+        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png",
+        "subdomains": "",
+        "minNativeZoom": 6,
+        "maxNativeZoom": 19,
+        "credit": "지도: 브이월드(국토교통부)",
+        "attribution": "&copy; <a href=\"https://www.vworld.kr\" target=\"_blank\" rel=\"noopener\">브이월드</a> 국토교통부"
+      },
+      {
+        "id": "gray",
+        "name": "브이월드 회색 지도",
+        "needsKey": "vworld",
+        "optIn": true,
+        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/gray/{z}/{y}/{x}.png",
+        "subdomains": "",
+        "minNativeZoom": 6,
+        "maxNativeZoom": 18,
+        "credit": "지도: 브이월드(국토교통부)",
+        "attribution": "&copy; <a href=\"https://www.vworld.kr\" target=\"_blank\" rel=\"noopener\">브이월드</a> 국토교통부"
+      },
+      {
         "id": "osm",
         "name": "OpenStreetMap 기본 지도",
         "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         "subdomains": "",
         "maxNativeZoom": 19,
+        "credit": "지도 데이터 © OpenStreetMap 기여자",
         "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> 기여자"
       },
       {
@@ -1341,6 +1380,7 @@ window.HM_SETTINGS = {
         "url": "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
         "subdomains": "abcd",
         "maxNativeZoom": 20,
+        "credit": "지도 데이터 © OpenStreetMap 기여자, CARTO",
         "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap</a> 기여자 &copy; <a href=\"https://carto.com/attributions\" target=\"_blank\" rel=\"noopener\">CARTO</a>"
       }
     ]
@@ -4630,7 +4670,7 @@ window.HM_PLACES = {
   var map, markerLayer, ringLayer, routeLayer, baseLayer, meLayer;
   var markers = {};
   var opts = {};
-  var tileLayer = null, tilesOk = false, activeTile = null, tileList = [];
+  var tileLayer = null, tilesOk = false, activeTile = null, activeInfo = null, tileList = [];
   var overlays = {};
 
   function init(el, settings, o) {
@@ -4638,10 +4678,12 @@ window.HM_PLACES = {
     var cfg = settings.map;
     map = L.map(el, {
       center: cfg.center, zoom: cfg.zoom, minZoom: cfg.minZoom, maxZoom: cfg.maxZoom,
-      zoomControl: false, attributionControl: true,
+      zoomControl: false, attributionControl: false,
       tap: true
     });
-    map.attributionControl.setPrefix(false);
+    /* v0.3: 지도 출처 표시를 오른쪽 위(검색창 바로 아래)로 옮김. 휴대폰에서는 오른쪽 아래가 장소 목록 시트에 가려져
+       브이월드(공공누리 출처표시) 표기가 안 보였다. */
+    L.control.attribution({ position: 'topright', prefix: false }).addTo(map);
     window.__hmMap = map;
     L.control.scale({ imperial: false, position: 'bottomleft', maxWidth: 90 }).addTo(map);
 
@@ -4656,7 +4698,7 @@ window.HM_PLACES = {
     overlays = { base: baseLayer, rings: ringLayer, route: routeLayer, places: markerLayer, me: meLayer };
 
     drawBase(settings);
-    tileList = cfg.tiles;
+    tileList = prepareTiles(cfg.tiles);
     tryTiles(tileList, 0);
 
     map.on('zoomend', function () {
@@ -4714,13 +4756,65 @@ window.HM_PLACES = {
     fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'strict-origin-when-cross-origin', cache: 'force-cache' })
       .then(function (r) {
         if (done) return; done = true; clearTimeout(timer);
-        if (r.ok) { note(t.id, 'probe', 'ok', 'HTTP ' + r.status); cb('ok'); }
-        else { note(t.id, 'probe', 'blocked', 'HTTP ' + r.status); cb('blocked'); }
+        var type = (r.headers && r.headers.get('content-type')) || '';
+        if (r.ok && (!type || /^image\//i.test(type))) { note(t.id, 'probe', 'ok', 'HTTP ' + r.status + (type ? ' ' + type : '')); cb('ok'); return; }
+        /* v0.3: 인증 실패를 "200 + 글자(XML 등)"로 돌려주는 서버가 있어, 그림이 아니면 거절로 본다. 내용 앞부분을 진단에 남긴다. */
+        r.text().then(function (body) {
+          var why = 'HTTP ' + r.status + (type ? ' ' + type : '') + (r.ok ? ' (지도 그림이 아님)' : '');
+          var snippet = hideKey(t, body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 120);
+          note(t.id, 'probe', 'blocked', why + (snippet ? ': ' + snippet : ''));
+          cb('blocked');
+        }, function () { note(t.id, 'probe', 'blocked', 'HTTP ' + r.status); cb('blocked'); });
       }, function (err) {
         if (done) return; done = true; clearTimeout(timer);
         note(t.id, 'probe', 'unknown', '요청 실패(네트워크 차단 또는 CORS): ' + (err && err.message || err)); cb('unknown');
       });
   }
+
+  /* ---------- v0.3: 인증키가 필요한 지도(브이월드) ----------
+     키는 data/map-key.js 에 넣거나, 시험용으로 주소 끝에 ?vwkey=발급키 를 붙여 한 번 열면 이 브라우저에 저장된다.
+     ?vwkey 는 저장 직후 주소창에서 지워서, 공유 링크에 키가 섞여 나가지 않게 한다. */
+  var KEY_STORE = 'hongdae-map:key:';
+  function takeUrlKeys() {
+    var m = /[?&]vwkey=([^&#]*)/.exec(location.search);
+    if (!m) return;
+    var v = decodeURIComponent(m[1]).trim();
+    try {
+      if (!v || v === 'clear') localStorage.removeItem(KEY_STORE + 'vworld');
+      else localStorage.setItem(KEY_STORE + 'vworld', v);
+    } catch (e) { /* 저장이 막힌 브라우저: 이번 접속에서만 쓴다 */ sessionKeys.vworld = v === 'clear' ? '' : v; }
+    if (window.history && history.replaceState) {
+      var q = location.search.replace(/([?&])vwkey=[^&#]*&?/, '$1').replace(/[?&]$/, '');
+      history.replaceState(null, '', location.pathname + q + location.hash);
+    }
+  }
+  var sessionKeys = {};
+  function getKey(name) {
+    if (sessionKeys[name]) return sessionKeys[name];
+    try { var v = localStorage.getItem(KEY_STORE + name); if (v) return v; } catch (e) {}
+    var k = window.HM_MAP_KEYS && window.HM_MAP_KEYS[name];
+    return (k && String(k).trim()) || '';
+  }
+  /* ?map=gray 처럼 붙이면 그 배경을 먼저 시도 (배경 비교용). optIn 배경은 직접 고를 때만 쓴다. */
+  function prepareTiles(list) {
+    takeUrlKeys();
+    var m = /[?&]map=([\w-]+)/.exec(location.search), want = m && m[1];
+    var out = [];
+    list.forEach(function (t) {
+      if (t.optIn && t.id !== want) return;
+      var c = {}; for (var k in t) c[k] = t[k];
+      if (t.needsKey) {
+        var key = getKey(t.needsKey);
+        if (!key) { note(t.id, 'key', 'skipped', '인증키 없음 (data/map-key.js 또는 ?vwkey=)'); return; }
+        c.url = t.url.replace('{key}', encodeURIComponent(key));
+        c._key = key;
+      }
+      out.push(c);
+    });
+    if (want) out.sort(function (a, b) { return (b.id === want) - (a.id === want); });
+    return out;
+  }
+  function hideKey(t, text) { return t._key ? String(text).split(t._key).join('***') : String(text); }
 
   function tryTiles(list, i) {
     if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
@@ -4740,7 +4834,7 @@ window.HM_PLACES = {
   function useLayer(list, i, t) {
     var loaded = 0, failed = 0, switched = false;
     var layer = L.tileLayer(t.url, {
-      subdomains: t.subdomains || 'abc', maxNativeZoom: t.maxNativeZoom, maxZoom: 19,
+      subdomains: t.subdomains || 'abc', maxNativeZoom: t.maxNativeZoom, minNativeZoom: t.minNativeZoom || 0, maxZoom: 19,
       attribution: t.attribution, detectRetina: false,
       referrerPolicy: 'strict-origin-when-cross-origin' // 타일 서버가 어느 사이트에서 쓰는지 알 수 있게(OSM 정책)
     });
@@ -4752,7 +4846,7 @@ window.HM_PLACES = {
     layer.on('tileload', function () {
       loaded++;
       if (!tilesOk) {
-        tilesOk = true; activeTile = t.id;
+        tilesOk = true; activeTile = t.id; activeInfo = { id: t.id, name: t.name, credit: t.credit || '' };
         map.getContainer().classList.remove('no-tiles');
         note(t.id, 'tiles', 'ok', '타일 표시됨');
         if (opts.onTilesOk) opts.onTilesOk(t);
@@ -4809,14 +4903,21 @@ window.HM_PLACES = {
     map.setView(map.unproject(target, z), z, { animate: true });
   }
 
-  function fitTo(points) {
+  /* o.minZoom: 핀 전체를 담으려고 이보다 더 멀리 축소해야 하면, 대신 핀들의 가운데를 이 확대 수준으로 보여 준다.
+     (v0.3: 휴대폰 첫 화면이 13단계까지 멀어져 골목을 읽을 수 없던 문제. 화면 밖 장소는 목록에서 그대로 보임) */
+  function fitTo(points, o) {
     if (!points.length) return;
     if (points.length === 1) { focus(points[0][0], points[0][1], 17); return; }
     var p = pad();
     var size = map.getSize();
     var availY = size.y - p.top - p.bottom;
     var extra = availY < 160 ? 10 : 40;
-    map.fitBounds(L.latLngBounds(points), {
+    var b = L.latLngBounds(points);
+    if (o && o.minZoom) {
+      var need = map.getBoundsZoom(b, false, L.point(p.left + extra * 2, p.top + p.bottom + extra * 2));
+      if (need < o.minZoom) { var c = o.center || b.getCenter(); focus(c[0] != null ? c[0] : c.lat, c[1] != null ? c[1] : c.lng, o.minZoom); return; }
+    }
+    map.fitBounds(b, {
       paddingTopLeft: [p.left + extra, p.top + extra],
       paddingBottomRight: [extra, p.bottom + extra],
       maxZoom: 17, animate: true
@@ -4854,8 +4955,8 @@ window.HM_PLACES = {
   function goZone(z) { map.setView(z.center, z.zoom, { animate: true }); }
   function invalidate() { if (map) map.invalidateSize(); }
   function tilesLoaded() { return tilesOk; }
-  function tileStatus() { return { ok: tilesOk, active: activeTile, log: diag.slice() }; }
-  function retryTiles() { diag = []; tilesOk = false; activeTile = null; tryTiles(tileList, 0); }
+  function tileStatus() { return { ok: tilesOk, active: activeTile, info: activeInfo, log: diag.slice() }; }
+  function retryTiles() { diag = []; tilesOk = false; activeTile = null; activeInfo = null; tryTiles(tileList, 0); }
 
   /* 나중 기능(개인 핀, 코스 주변 추천 등)을 위한 이름 붙은 레이어.
      overlay('personal') 처럼 부르면 같은 레이어를 돌려주고, 없으면 새로 만든다. 지도 전체를 다시 만들 필요 없음. */
@@ -5132,7 +5233,13 @@ window.HM_PLACES = {
   function footer() {
     return '<footer class="foot"><p>정보 기준: ' + fmtDate(D.meta.researchedAt) + ' 웹 조사. 현장이나 전화로 확인한 정보는 아니에요. ' +
       '가기 전에 네이버지도·카카오맵에서 영업 여부를 확인해 주세요.</p>' +
-      '<p>도보 시간은 직선거리로 어림한 값이에요. 지도 데이터 © OpenStreetMap 기여자.</p></footer>';
+      '<p>도보 시간은 직선거리로 어림한 값이에요. <span class="mapcredit">' + esc(mapCredit()) + '</span></p></footer>';
+  }
+  /* v0.3: 지금 화면에 깔린 지도 배경의 출처 (브이월드·OSM 등 실제로 표시된 것 기준) */
+  function mapCredit() {
+    var st = M.tileStatus && M.tileStatus();
+    if (st && st.info && st.info.credit) return st.info.credit + '.';
+    return '';
   }
   function fmtDate(s) { var a = s.split('-'); return a[0] + '년 ' + Number(a[1]) + '월 ' + Number(a[2]) + '일'; }
 
@@ -5277,8 +5384,8 @@ window.HM_PLACES = {
     var co = courseOrder(ids);
     var stayMin = 0, stayMax = 0;
     co.list.forEach(function (x) { if (x.p.stayMinutes) { stayMin += x.p.stayMinutes[0]; stayMax += x.p.stayMinutes[1]; } });
-    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서예요. 걷는 시간 약 ' + co.totalWalk + '분, 머무는 시간 ' +
-      hm(stayMin) + '~' + hm(stayMax) + ' (어림값).</p></div>';
+    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서 초안이에요. 걷는 시간 약 ' + co.totalWalk + '분(직선거리로 어림), 머무는 시간 ' +
+      hm(stayMin) + '~' + hm(stayMax) + ' (어림값). 지도의 선은 실제 길이 아니라 방문 순서를 이은 선이에요. 실제 길은 네이버지도·카카오맵에서 확인해 주세요.</p></div>';
     h += '<ol class="plist course">' + co.list.map(function (x, i) {
       return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분' });
     }).join('') + '</ol>';
@@ -5351,7 +5458,7 @@ window.HM_PLACES = {
       M.fitTo([[n.lat + r / 111320, n.lng], [n.lat - r / 111320, n.lng], [n.lat, n.lng + r / 88200], [n.lat, n.lng - r / 88200]]);
       return;
     }
-    M.fitTo(filtered().map(function (x) { return displayPos[x.p.id]; }));
+    M.fitTo(filtered().map(function (x) { return displayPos[x.p.id]; }), { minZoom: 15 });
   }
 
   /* ---------- 바텀시트 (휴대폰) / 왼쪽 패널 (넓은 화면) ---------- */
@@ -5647,8 +5754,21 @@ window.HM_PLACES = {
       el.mapNote.textContent = msg;
       setTimeout(function () { el.mapNote.hidden = true; }, 12000);
     },
-    onTilesOk: function () {
-      if (location.protocol !== 'file:' || MAP_DEBUG) return;
+    onTilesOk: function (t) {
+      [].forEach.call(document.querySelectorAll('.mapcredit'), function (n) { n.textContent = mapCredit(); });
+      if (MAP_DEBUG) return;
+      /* v0.3: 브이월드 키가 있는데도 못 불러와서 다른 지도로 넘어간 경우, 조용히 넘어가지 않고 알려 준다 */
+      var vwFail = (M.tileStatus().log || []).filter(function (d) {
+        return (d.id === 'vworld' || d.id === 'gray') && (d.result === 'blocked' || d.result === 'failed');
+      });
+      if (t && t.id !== 'vworld' && t.id !== 'gray' && vwFail.length && !window.HM_PREVIEW) {
+        el.mapNote.hidden = false;
+        el.mapNote.textContent = '브이월드 지도를 불러오지 못해 ' + t.name + '로 보여 드려요. (' + vwFail[0].detail +
+          ') 인증키와 등록한 사이트 주소를 확인해 주세요. 자세히: 주소 끝에 ?mapdebug';
+        setTimeout(function () { el.mapNote.hidden = true; }, 15000);
+        return;
+      }
+      if (location.protocol !== 'file:') return;
       el.mapNote.hidden = false;
       el.mapNote.textContent = '파일을 직접 열었어요. 지도에 경고 글자가 보이면 "지도 실행하기" 파일로 다시 열어 주세요.';
       setTimeout(function () { el.mapNote.hidden = true; }, 10000);

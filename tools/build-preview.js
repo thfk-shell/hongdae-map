@@ -13,7 +13,7 @@ const swap = (name, content) => {
 swap('LEAFLET_CSS', '<style>\n' + read('vendor/leaflet/leaflet.css') + '\n</style>');
 swap('APP_CSS', '<style>\n' + read('css/style.css') + '\n</style>');
 swap('LEAFLET_JS', '<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>');
-swap('DATA', '<script>\nwindow.HM_PREVIEW = true; // 미리보기 표시: 지도 배경이 막힌 이유를 정확히 안내\n' + read('data/settings.js') + '\n' + read('data/places.js') + '\n</script>');
+swap('DATA', '<script>\nwindow.HM_PREVIEW = true; // 미리보기 표시: 지도 배경이 막힌 이유를 정확히 안내\n' + read('data/map-key.js') + '\n' + read('data/settings.js') + '\n' + read('data/places.js') + '\n</script>');
 swap('APP_JS', '<script>\n' + ['js/util.js', 'js/map.js', 'js/app.js'].map(read).join('\n') + '\n</script>');
 // Claude 미리보기는 <html><head><body> 를 직접 씌우므로 안쪽 내용만 남깁니다.
 const head = html.match(/<head>([\s\S]*?)<\/head>/)[1]

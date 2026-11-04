@@ -255,7 +255,13 @@
   function footer() {
     return '<footer class="foot"><p>정보 기준: ' + fmtDate(D.meta.researchedAt) + ' 웹 조사. 현장이나 전화로 확인한 정보는 아니에요. ' +
       '가기 전에 네이버지도·카카오맵에서 영업 여부를 확인해 주세요.</p>' +
-      '<p>도보 시간은 직선거리로 어림한 값이에요. 지도 데이터 © OpenStreetMap 기여자.</p></footer>';
+      '<p>도보 시간은 직선거리로 어림한 값이에요. <span class="mapcredit">' + esc(mapCredit()) + '</span></p></footer>';
+  }
+  /* v0.3: 지금 화면에 깔린 지도 배경의 출처 (브이월드·OSM 등 실제로 표시된 것 기준) */
+  function mapCredit() {
+    var st = M.tileStatus && M.tileStatus();
+    if (st && st.info && st.info.credit) return st.info.credit + '.';
+    return '';
   }
   function fmtDate(s) { var a = s.split('-'); return a[0] + '년 ' + Number(a[1]) + '월 ' + Number(a[2]) + '일'; }
 
@@ -400,8 +406,8 @@
     var co = courseOrder(ids);
     var stayMin = 0, stayMax = 0;
     co.list.forEach(function (x) { if (x.p.stayMinutes) { stayMin += x.p.stayMinutes[0]; stayMax += x.p.stayMinutes[1]; } });
-    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서예요. 걷는 시간 약 ' + co.totalWalk + '분, 머무는 시간 ' +
-      hm(stayMin) + '~' + hm(stayMax) + ' (어림값).</p></div>';
+    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서 초안이에요. 걷는 시간 약 ' + co.totalWalk + '분(직선거리로 어림), 머무는 시간 ' +
+      hm(stayMin) + '~' + hm(stayMax) + ' (어림값). 지도의 선은 실제 길이 아니라 방문 순서를 이은 선이에요. 실제 길은 네이버지도·카카오맵에서 확인해 주세요.</p></div>';
     h += '<ol class="plist course">' + co.list.map(function (x, i) {
       return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분' });
     }).join('') + '</ol>';
@@ -474,7 +480,7 @@
       M.fitTo([[n.lat + r / 111320, n.lng], [n.lat - r / 111320, n.lng], [n.lat, n.lng + r / 88200], [n.lat, n.lng - r / 88200]]);
       return;
     }
-    M.fitTo(filtered().map(function (x) { return displayPos[x.p.id]; }));
+    M.fitTo(filtered().map(function (x) { return displayPos[x.p.id]; }), { minZoom: 15 });
   }
 
   /* ---------- 바텀시트 (휴대폰) / 왼쪽 패널 (넓은 화면) ---------- */
@@ -770,8 +776,21 @@
       el.mapNote.textContent = msg;
       setTimeout(function () { el.mapNote.hidden = true; }, 12000);
     },
-    onTilesOk: function () {
-      if (location.protocol !== 'file:' || MAP_DEBUG) return;
+    onTilesOk: function (t) {
+      [].forEach.call(document.querySelectorAll('.mapcredit'), function (n) { n.textContent = mapCredit(); });
+      if (MAP_DEBUG) return;
+      /* v0.3: 브이월드 키가 있는데도 못 불러와서 다른 지도로 넘어간 경우, 조용히 넘어가지 않고 알려 준다 */
+      var vwFail = (M.tileStatus().log || []).filter(function (d) {
+        return (d.id === 'vworld' || d.id === 'gray') && (d.result === 'blocked' || d.result === 'failed');
+      });
+      if (t && t.id !== 'vworld' && t.id !== 'gray' && vwFail.length && !window.HM_PREVIEW) {
+        el.mapNote.hidden = false;
+        el.mapNote.textContent = '브이월드 지도를 불러오지 못해 ' + t.name + '로 보여 드려요. (' + vwFail[0].detail +
+          ') 인증키와 등록한 사이트 주소를 확인해 주세요. 자세히: 주소 끝에 ?mapdebug';
+        setTimeout(function () { el.mapNote.hidden = true; }, 15000);
+        return;
+      }
+      if (location.protocol !== 'file:') return;
       el.mapNote.hidden = false;
       el.mapNote.textContent = '파일을 직접 열었어요. 지도에 경고 글자가 보이면 "지도 실행하기" 파일로 다시 열어 주세요.';
       setTimeout(function () { el.mapNote.hidden = true; }, 10000);

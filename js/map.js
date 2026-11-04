@@ -7,7 +7,7 @@
   var map, markerLayer, ringLayer, routeLayer, baseLayer, meLayer;
   var markers = {};
   var opts = {};
-  var tileLayer = null, tilesOk = false, activeTile = null, tileList = [];
+  var tileLayer = null, tilesOk = false, activeTile = null, activeInfo = null, tileList = [];
   var overlays = {};
 
   function init(el, settings, o) {
@@ -15,10 +15,12 @@
     var cfg = settings.map;
     map = L.map(el, {
       center: cfg.center, zoom: cfg.zoom, minZoom: cfg.minZoom, maxZoom: cfg.maxZoom,
-      zoomControl: false, attributionControl: true,
+      zoomControl: false, attributionControl: false,
       tap: true
     });
-    map.attributionControl.setPrefix(false);
+    /* v0.3: 지도 출처 표시를 오른쪽 위(검색창 바로 아래)로 옮김. 휴대폰에서는 오른쪽 아래가 장소 목록 시트에 가려져
+       브이월드(공공누리 출처표시) 표기가 안 보였다. */
+    L.control.attribution({ position: 'topright', prefix: false }).addTo(map);
     window.__hmMap = map;
     L.control.scale({ imperial: false, position: 'bottomleft', maxWidth: 90 }).addTo(map);
 
@@ -33,7 +35,7 @@
     overlays = { base: baseLayer, rings: ringLayer, route: routeLayer, places: markerLayer, me: meLayer };
 
     drawBase(settings);
-    tileList = cfg.tiles;
+    tileList = prepareTiles(cfg.tiles);
     tryTiles(tileList, 0);
 
     map.on('zoomend', function () {
@@ -91,13 +93,65 @@
     fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'strict-origin-when-cross-origin', cache: 'force-cache' })
       .then(function (r) {
         if (done) return; done = true; clearTimeout(timer);
-        if (r.ok) { note(t.id, 'probe', 'ok', 'HTTP ' + r.status); cb('ok'); }
-        else { note(t.id, 'probe', 'blocked', 'HTTP ' + r.status); cb('blocked'); }
+        var type = (r.headers && r.headers.get('content-type')) || '';
+        if (r.ok && (!type || /^image\//i.test(type))) { note(t.id, 'probe', 'ok', 'HTTP ' + r.status + (type ? ' ' + type : '')); cb('ok'); return; }
+        /* v0.3: 인증 실패를 "200 + 글자(XML 등)"로 돌려주는 서버가 있어, 그림이 아니면 거절로 본다. 내용 앞부분을 진단에 남긴다. */
+        r.text().then(function (body) {
+          var why = 'HTTP ' + r.status + (type ? ' ' + type : '') + (r.ok ? ' (지도 그림이 아님)' : '');
+          var snippet = hideKey(t, body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 120);
+          note(t.id, 'probe', 'blocked', why + (snippet ? ': ' + snippet : ''));
+          cb('blocked');
+        }, function () { note(t.id, 'probe', 'blocked', 'HTTP ' + r.status); cb('blocked'); });
       }, function (err) {
         if (done) return; done = true; clearTimeout(timer);
         note(t.id, 'probe', 'unknown', '요청 실패(네트워크 차단 또는 CORS): ' + (err && err.message || err)); cb('unknown');
       });
   }
+
+  /* ---------- v0.3: 인증키가 필요한 지도(브이월드) ----------
+     키는 data/map-key.js 에 넣거나, 시험용으로 주소 끝에 ?vwkey=발급키 를 붙여 한 번 열면 이 브라우저에 저장된다.
+     ?vwkey 는 저장 직후 주소창에서 지워서, 공유 링크에 키가 섞여 나가지 않게 한다. */
+  var KEY_STORE = 'hongdae-map:key:';
+  function takeUrlKeys() {
+    var m = /[?&]vwkey=([^&#]*)/.exec(location.search);
+    if (!m) return;
+    var v = decodeURIComponent(m[1]).trim();
+    try {
+      if (!v || v === 'clear') localStorage.removeItem(KEY_STORE + 'vworld');
+      else localStorage.setItem(KEY_STORE + 'vworld', v);
+    } catch (e) { /* 저장이 막힌 브라우저: 이번 접속에서만 쓴다 */ sessionKeys.vworld = v === 'clear' ? '' : v; }
+    if (window.history && history.replaceState) {
+      var q = location.search.replace(/([?&])vwkey=[^&#]*&?/, '$1').replace(/[?&]$/, '');
+      history.replaceState(null, '', location.pathname + q + location.hash);
+    }
+  }
+  var sessionKeys = {};
+  function getKey(name) {
+    if (sessionKeys[name]) return sessionKeys[name];
+    try { var v = localStorage.getItem(KEY_STORE + name); if (v) return v; } catch (e) {}
+    var k = window.HM_MAP_KEYS && window.HM_MAP_KEYS[name];
+    return (k && String(k).trim()) || '';
+  }
+  /* ?map=gray 처럼 붙이면 그 배경을 먼저 시도 (배경 비교용). optIn 배경은 직접 고를 때만 쓴다. */
+  function prepareTiles(list) {
+    takeUrlKeys();
+    var m = /[?&]map=([\w-]+)/.exec(location.search), want = m && m[1];
+    var out = [];
+    list.forEach(function (t) {
+      if (t.optIn && t.id !== want) return;
+      var c = {}; for (var k in t) c[k] = t[k];
+      if (t.needsKey) {
+        var key = getKey(t.needsKey);
+        if (!key) { note(t.id, 'key', 'skipped', '인증키 없음 (data/map-key.js 또는 ?vwkey=)'); return; }
+        c.url = t.url.replace('{key}', encodeURIComponent(key));
+        c._key = key;
+      }
+      out.push(c);
+    });
+    if (want) out.sort(function (a, b) { return (b.id === want) - (a.id === want); });
+    return out;
+  }
+  function hideKey(t, text) { return t._key ? String(text).split(t._key).join('***') : String(text); }
 
   function tryTiles(list, i) {
     if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
@@ -117,7 +171,7 @@
   function useLayer(list, i, t) {
     var loaded = 0, failed = 0, switched = false;
     var layer = L.tileLayer(t.url, {
-      subdomains: t.subdomains || 'abc', maxNativeZoom: t.maxNativeZoom, maxZoom: 19,
+      subdomains: t.subdomains || 'abc', maxNativeZoom: t.maxNativeZoom, minNativeZoom: t.minNativeZoom || 0, maxZoom: 19,
       attribution: t.attribution, detectRetina: false,
       referrerPolicy: 'strict-origin-when-cross-origin' // 타일 서버가 어느 사이트에서 쓰는지 알 수 있게(OSM 정책)
     });
@@ -129,7 +183,7 @@
     layer.on('tileload', function () {
       loaded++;
       if (!tilesOk) {
-        tilesOk = true; activeTile = t.id;
+        tilesOk = true; activeTile = t.id; activeInfo = { id: t.id, name: t.name, credit: t.credit || '' };
         map.getContainer().classList.remove('no-tiles');
         note(t.id, 'tiles', 'ok', '타일 표시됨');
         if (opts.onTilesOk) opts.onTilesOk(t);
@@ -186,14 +240,21 @@
     map.setView(map.unproject(target, z), z, { animate: true });
   }
 
-  function fitTo(points) {
+  /* o.minZoom: 핀 전체를 담으려고 이보다 더 멀리 축소해야 하면, 대신 핀들의 가운데를 이 확대 수준으로 보여 준다.
+     (v0.3: 휴대폰 첫 화면이 13단계까지 멀어져 골목을 읽을 수 없던 문제. 화면 밖 장소는 목록에서 그대로 보임) */
+  function fitTo(points, o) {
     if (!points.length) return;
     if (points.length === 1) { focus(points[0][0], points[0][1], 17); return; }
     var p = pad();
     var size = map.getSize();
     var availY = size.y - p.top - p.bottom;
     var extra = availY < 160 ? 10 : 40;
-    map.fitBounds(L.latLngBounds(points), {
+    var b = L.latLngBounds(points);
+    if (o && o.minZoom) {
+      var need = map.getBoundsZoom(b, false, L.point(p.left + extra * 2, p.top + p.bottom + extra * 2));
+      if (need < o.minZoom) { var c = o.center || b.getCenter(); focus(c[0] != null ? c[0] : c.lat, c[1] != null ? c[1] : c.lng, o.minZoom); return; }
+    }
+    map.fitBounds(b, {
       paddingTopLeft: [p.left + extra, p.top + extra],
       paddingBottomRight: [extra, p.bottom + extra],
       maxZoom: 17, animate: true
@@ -231,8 +292,8 @@
   function goZone(z) { map.setView(z.center, z.zoom, { animate: true }); }
   function invalidate() { if (map) map.invalidateSize(); }
   function tilesLoaded() { return tilesOk; }
-  function tileStatus() { return { ok: tilesOk, active: activeTile, log: diag.slice() }; }
-  function retryTiles() { diag = []; tilesOk = false; activeTile = null; tryTiles(tileList, 0); }
+  function tileStatus() { return { ok: tilesOk, active: activeTile, info: activeInfo, log: diag.slice() }; }
+  function retryTiles() { diag = []; tilesOk = false; activeTile = null; activeInfo = null; tryTiles(tileList, 0); }
 
   /* 나중 기능(개인 핀, 코스 주변 추천 등)을 위한 이름 붙은 레이어.
      overlay('personal') 처럼 부르면 같은 레이어를 돌려주고, 없으면 새로 만든다. 지도 전체를 다시 만들 필요 없음. */
