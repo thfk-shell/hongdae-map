@@ -781,9 +781,9 @@
       if (MAP_DEBUG) return;
       /* v0.3: 브이월드 키가 있는데도 못 불러와서 다른 지도로 넘어간 경우, 조용히 넘어가지 않고 알려 준다 */
       var vwFail = (M.tileStatus().log || []).filter(function (d) {
-        return (d.id === 'vworld' || d.id === 'gray') && (d.result === 'blocked' || d.result === 'failed');
+        return (d.id === 'vworld' || d.id === 'white') && (d.result === 'blocked' || d.result === 'failed');
       });
-      if (t && t.id !== 'vworld' && t.id !== 'gray' && vwFail.length && !window.HM_PREVIEW) {
+      if (t && t.id !== 'vworld' && t.id !== 'white' && vwFail.length && !window.HM_PREVIEW) {
         el.mapNote.hidden = false;
         el.mapNote.textContent = '브이월드 지도를 불러오지 못해 ' + t.name + '로 보여 드려요. (' + vwFail[0].detail +
           ') 인증키와 등록한 사이트 주소를 확인해 주세요. 자세히: 주소 끝에 ?mapdebug';

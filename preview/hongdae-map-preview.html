@@ -1354,11 +1354,11 @@ window.HM_SETTINGS = {
         "attribution": "&copy; <a href=\"https://www.vworld.kr\" target=\"_blank\" rel=\"noopener\">브이월드</a> 국토교통부"
       },
       {
-        "id": "gray",
-        "name": "브이월드 회색 지도",
+        "id": "white",
+        "name": "브이월드 흰색 지도",
         "needsKey": "vworld",
         "optIn": true,
-        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/gray/{z}/{y}/{x}.png",
+        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/white/{z}/{y}/{x}.png",
         "subdomains": "",
         "minNativeZoom": 6,
         "maxNativeZoom": 18,
@@ -4795,7 +4795,7 @@ window.HM_PLACES = {
     var k = window.HM_MAP_KEYS && window.HM_MAP_KEYS[name];
     return (k && String(k).trim()) || '';
   }
-  /* ?map=gray 처럼 붙이면 그 배경을 먼저 시도 (배경 비교용). optIn 배경은 직접 고를 때만 쓴다. */
+  /* ?map=white 처럼 붙이면 그 배경을 먼저 시도 (배경 비교용). optIn 배경은 직접 고를 때만 쓴다. */
   function prepareTiles(list) {
     takeUrlKeys();
     var m = /[?&]map=([\w-]+)/.exec(location.search), want = m && m[1];
@@ -5759,9 +5759,9 @@ window.HM_PLACES = {
       if (MAP_DEBUG) return;
       /* v0.3: 브이월드 키가 있는데도 못 불러와서 다른 지도로 넘어간 경우, 조용히 넘어가지 않고 알려 준다 */
       var vwFail = (M.tileStatus().log || []).filter(function (d) {
-        return (d.id === 'vworld' || d.id === 'gray') && (d.result === 'blocked' || d.result === 'failed');
+        return (d.id === 'vworld' || d.id === 'white') && (d.result === 'blocked' || d.result === 'failed');
       });
-      if (t && t.id !== 'vworld' && t.id !== 'gray' && vwFail.length && !window.HM_PREVIEW) {
+      if (t && t.id !== 'vworld' && t.id !== 'white' && vwFail.length && !window.HM_PREVIEW) {
         el.mapNote.hidden = false;
         el.mapNote.textContent = '브이월드 지도를 불러오지 못해 ' + t.name + '로 보여 드려요. (' + vwFail[0].detail +
           ') 인증키와 등록한 사이트 주소를 확인해 주세요. 자세히: 주소 끝에 ?mapdebug';

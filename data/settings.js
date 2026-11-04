@@ -281,11 +281,11 @@ window.HM_SETTINGS = {
         "attribution": "&copy; <a href=\"https://www.vworld.kr\" target=\"_blank\" rel=\"noopener\">브이월드</a> 국토교통부"
       },
       {
-        "id": "gray",
-        "name": "브이월드 회색 지도",
+        "id": "white",
+        "name": "브이월드 흰색 지도",
         "needsKey": "vworld",
         "optIn": true,
-        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/gray/{z}/{y}/{x}.png",
+        "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/white/{z}/{y}/{x}.png",
         "subdomains": "",
         "minNativeZoom": 6,
         "maxNativeZoom": 18,

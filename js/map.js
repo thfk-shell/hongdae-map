@@ -132,7 +132,7 @@
     var k = window.HM_MAP_KEYS && window.HM_MAP_KEYS[name];
     return (k && String(k).trim()) || '';
   }
-  /* ?map=gray 처럼 붙이면 그 배경을 먼저 시도 (배경 비교용). optIn 배경은 직접 고를 때만 쓴다. */
+  /* ?map=white 처럼 붙이면 그 배경을 먼저 시도 (배경 비교용). optIn 배경은 직접 고를 때만 쓴다. */
   function prepareTiles(list) {
     takeUrlKeys();
     var m = /[?&]map=([\w-]+)/.exec(location.search), want = m && m[1];
