@@ -5014,6 +5014,7 @@ window.HM_PLACES = {
 
   /* 같은 건물 좌표를 쓰는 장소는 지도에서만 살짝 벌려 표시 (거리 계산은 원래 좌표) */
   var displayPos = {};
+  var sameBuilding = {}; // v0.3: 같은 건물(같은 좌표)에 있는 장소 수 — 핀 이름에 층을 붙여 다른 건물로 오해하지 않게
   (function spread() {
     var groups = {};
     places.forEach(function (p) {
@@ -5024,6 +5025,7 @@ window.HM_PLACES = {
       var g = groups[k];
       g.forEach(function (p, i) {
         if (g.length === 1) { displayPos[p.id] = [p.location.lat, p.location.lng]; return; }
+        sameBuilding[p.id] = g.length;
         var a = (2 * Math.PI * i) / g.length, r = 14;
         displayPos[p.id] = [p.location.lat + (r * Math.cos(a)) / 111320, p.location.lng + (r * Math.sin(a)) / 88200];
       });
@@ -5219,7 +5221,7 @@ window.HM_PLACES = {
       h += '<ul class="plist">' + list.map(function (x) { return card(x); }).join('') + '</ul>';
     } else {
       h += '<div class="empty"><b>조건에 맞는 곳이 없어요.</b><p>' +
-        (S.quick.indexOf('open') >= 0 ? '지금 영업 중인 곳만 보고 있어요. ' : '') + '필터를 하나씩 풀어 보세요.</p>' +
+        (S.quick.indexOf('open') >= 0 ? '등록된 영업시간 기준으로 지금 영업 중인 곳만 보고 있어요. ' : '') + '필터를 하나씩 풀어 보세요.</p>' +
         '<button type="button" class="btn" data-act="clear">필터 지우기</button></div>';
     }
     var hc = hiddenCount();
@@ -5303,7 +5305,8 @@ window.HM_PLACES = {
     /* 기본 정보 */
     h += '<section class="d-sec"><h2>영업시간</h2><table class="hours"><tbody>' + U.weekRows(p).map(function (row) {
       return '<tr' + (row.key === now.day ? ' class="today"' : '') + '><th scope="row">' + row.label + (row.key === now.day ? ' (오늘)' : '') + '</th><td>' + esc(row.text) + '</td></tr>';
-    }).join('') + '</tbody></table>' + (p.hoursNote ? '<p class="note">' + esc(p.hoursNote) + '</p>' : '') + '</section>';
+    }).join('') + '</tbody></table>' + (p.hoursNote ? '<p class="note">' + esc(p.hoursNote) + '</p>' : '') +
+      '<p class="note">"영업 중" 표시는 ' + fmtDate(p.checkedAt || D.meta.researchedAt) + '에 조사한 영업시간으로 계산한 예상이에요. 임시휴무·공휴일·브레이크타임은 반영되지 않아요.</p></section>';
 
     var info = [];
     info.push(['주소', p.address + (p.floor && p.address.indexOf(p.floor) < 0 ? ' · ' + p.floor : '')]);
@@ -5440,10 +5443,15 @@ window.HM_PLACES = {
   function markerFor(p, o) {
     var c = catById[p.primaryCategory], dp = displayPos[p.id];
     return {
-      id: p.id, lat: dp[0], lng: dp[1], color: c.color, icon: c.icon, label: p.shortName || p.name,
+      id: p.id, lat: dp[0], lng: dp[1], color: c.color, icon: c.icon, label: (p.shortName || p.name) + floorTag(p),
       selected: !!o.selected, saved: S.saved.indexOf(p.id) >= 0, number: o.number,
       dim: U.openState(p, now).code === 'closed', warn: p.verificationStatus === 'needs-check' || p.listed === false
     };
+  }
+  function floorTag(p) {
+    if (!sameBuilding[p.id] || !p.floor) return '';
+    var m = /(지하\s*\d+층|B\d+|\d+층)/.exec(p.floor);
+    return m ? ' · ' + m[1] : '';
   }
   function fitCurrent() {
     if (S.view === 'place' && byId[S.placeId]) {
