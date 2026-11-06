@@ -259,6 +259,21 @@
       '가기 전에 네이버지도·카카오맵에서 영업 여부를 확인해 주세요.</p>' +
       '<p>도보 시간은 직선거리로 어림한 값이에요. <span class="mapcredit">' + esc(mapCredit()) + '</span></p></footer>';
   }
+  /* v0.3: 브이월드 실패 안내 — X로 닫을 때까지 남는 창 */
+  function vworldTried(log) { return (log || []).some(function (d) { return (d.id === 'vworld' || d.id === 'white') && d.step !== 'key'; }); }
+  function vwReason(log) {
+    var d = (log || []).filter(function (x) { return (x.id === 'vworld' || x.id === 'white') && (x.result === 'blocked' || x.result === 'failed'); })[0];
+    return d ? d.detail : '';
+  }
+  function mapAlert(title, body, reason) {
+    var n = el.mapNote;
+    n.innerHTML = '<div class="mapalert" role="alert"><b>' + esc(title) + '</b><p>' + esc(body) + '</p>' +
+      (reason ? '<p class="why">이유: ' + esc(reason) + '</p>' : '') +
+      '<button type="button" class="mapalert-x" aria-label="안내 닫기">×</button></div>';
+    n.classList.add('is-alert');
+    n.hidden = false;
+    n.querySelector('.mapalert-x').addEventListener('click', function () { n.hidden = true; n.classList.remove('is-alert'); n.textContent = ''; });
+  }
   /* v0.3: 지금 화면에 깔린 지도 배경의 출처 (브이월드·OSM 등 실제로 표시된 것 기준) */
   function mapCredit() {
     var st = M.tileStatus && M.tileStatus();
@@ -780,6 +795,7 @@
         msg = '지도 배경을 못 불러와 간단한 지도로 보여 드려요. 인터넷 연결을 확인해 주세요.';
       }
       if (MAP_DEBUG) return;
+      if (vworldTried(log)) { mapAlert('지도를 불러올 수 없습니다', '브이월드 지도와 대신 쓸 지도 모두 불러오지 못해 간단한 지도로 보여 드려요. 장소 목록과 핀은 그대로 쓸 수 있어요.', vwReason(log)); return; }
       el.mapNote.hidden = false;
       el.mapNote.textContent = msg;
       setTimeout(function () { el.mapNote.hidden = true; }, 12000);
@@ -792,10 +808,7 @@
         return (d.id === 'vworld' || d.id === 'white') && (d.result === 'blocked' || d.result === 'failed');
       });
       if (t && t.id !== 'vworld' && t.id !== 'white' && vwFail.length && !window.HM_PREVIEW) {
-        el.mapNote.hidden = false;
-        el.mapNote.textContent = '브이월드 지도를 불러오지 못해 ' + t.name + '로 보여 드려요. (' + vwFail[0].detail +
-          ') 인증키와 등록한 사이트 주소를 확인해 주세요. 자세히: 주소 끝에 ?mapdebug';
-        setTimeout(function () { el.mapNote.hidden = true; }, 15000);
+        mapAlert('브이월드 지도를 불러올 수 없습니다', '대신 ' + t.name + '로 보여 드려요. 장소 목록과 핀은 그대로 쓸 수 있어요.', vwFail[0].detail);
         return;
       }
       if (location.protocol !== 'file:') return;
