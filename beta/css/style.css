@@ -79,6 +79,7 @@ a { color: var(--mid); }
 .mapalert .why { margin-top: 6px; font-size: 12px; opacity: .8; word-break: break-all; }
 .mapalert-x { position: absolute; top: 4px; right: 4px; width: 36px; height: 36px; border: 0; background: none; color: inherit; font-size: 22px; line-height: 1; cursor: pointer; border-radius: 8px; }
 .mapalert-x:focus-visible { outline: 2px solid currentColor; }
+.map.base-labels .exit-pin, .map.base-labels .zone-label { display: none; }
 .pin-wrap { background: none; border: 0; }
 .pin { position: relative; width: 34px; height: 34px; display: grid; place-items: center; }
 .pin-dot {
@@ -264,6 +265,7 @@ a { color: var(--mid); }
 .d-reason { margin: 0 0 8px; font-size: 17px; font-weight: 600; line-height: 1.4; background: linear-gradient(transparent 60%, color-mix(in srgb, var(--hi) 70%, transparent) 60%); display: inline; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .d-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); margin-top: 10px; }
 .d-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.d-actions .route { grid-column: 1 / -1; }
 .d-actions .near { grid-column: 1 / -1; background: var(--hi); color: #17201C; border-color: var(--ink); }
 .map-n { border-color: #03C75A; color: #03A04A; }
 .map-k { border-color: #E5C200; color: #6B5800; }
@@ -320,6 +322,10 @@ a { color: var(--mid); }
 .course .pc-ic { background: var(--c); }
 .course .pc-ic b { color: #fff; }
 .savedacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pc-move { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-left: 4px; }
+.pc-move button { width: 36px; height: 30px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; font-size: 14px; line-height: 1; }
+.pc-move button:disabled { opacity: .3; }
+.orderbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 13px; color: var(--muted); }
 
 /* ---------- 알림·창 ---------- */
 .toast {

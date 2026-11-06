@@ -155,6 +155,7 @@
 
   function tryTiles(list, i) {
     if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
+    map.getContainer().classList.remove('base-labels');
     if (i >= list.length) {
       tilesOk = false;
       map.getContainer().classList.add('no-tiles');
@@ -185,6 +186,8 @@
       if (!tilesOk) {
         tilesOk = true; activeTile = t.id; activeInfo = { id: t.id, name: t.name, credit: t.credit || '' };
         map.getContainer().classList.remove('no-tiles');
+        /* v0.3: 브이월드처럼 역 출구 번호·동네 이름이 이미 그려진 지도면, 우리가 따로 그린 출구·동네 글씨를 숨겨 겹침을 없앤다 */
+        map.getContainer().classList.toggle('base-labels', !!t.baseLabels);
         note(t.id, 'tiles', 'ok', '타일 표시됨');
         if (opts.onTilesOk) opts.onTilesOk(t);
       }
