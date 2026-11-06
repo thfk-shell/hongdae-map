@@ -30,6 +30,7 @@
     cats: [], quick: [], tag: null, q: '',
     near: null, start: load(C.storageKeys.start, C.defaultStartPoint), me: null,
     saved: load(C.storageKeys.saved, []).filter(function (id) { return byId[id]; }),
+    manual: load('hongdae-map:manual:v1', false) === true, shareManual: false,
     showHidden: false, sheet: 'half', listScroll: 0, depth: 0, storageWarned: false
   };
   if (S.start === 'me' || !C.startPoints.some(function (s) { return s.id === S.start; })) S.start = C.defaultStartPoint;
@@ -122,12 +123,14 @@
   }
 
   /* 저장 목록을 기준점에서 가까운 곳부터 차례로 잇는 순서 (실제 길찾기 아님) */
-  function courseOrder(ids) {
+  /* keep=true: 주어진 순서 그대로(직접 정한 순서), false: 기준점에서 가까운 곳부터 */
+  function courseOrder(ids, keep) {
     var rest = ids.map(function (id) { return byId[id]; }).filter(Boolean);
     var cur = startPoint(), out = [], total = 0;
     while (rest.length) {
       var bi = 0, bd = Infinity;
-      rest.forEach(function (p, i) { var d = U.distance(cur, p.location); if (d < bd) { bd = d; bi = i; } });
+      if (keep) bd = U.distance(cur, rest[0].location);
+      else rest.forEach(function (p, i) { var d = U.distance(cur, p.location); if (d < bd) { bd = d; bi = i; } });
       var next = rest.splice(bi, 1)[0];
       var w = U.walkMinutes(bd, C.walk);
       total += w;
@@ -182,7 +185,11 @@
       (x.min != null ? '<span class="walk">' + (extra && extra.walkLabel ? esc(extra.walkLabel) : '도보 ' + x.min + '분') + '</span>' : '') +
       (p.priceLevel ? '<span class="price">' + PRICE[p.priceLevel].split(' ')[0] + '</span>' : '') +
       flagChips(p) + '</span>' +
-      '</span></button>' + heartBtn(p, true) + '</li>';
+      '</span></button>' + heartBtn(p, true) +
+      (extra && extra.move ? '<span class="pc-move">' +
+        '<button type="button" data-act="moveUp" data-id="' + p.id + '" aria-label="' + esc(p.name) + ' 앞으로"' + (extra.first ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" data-act="moveDown" data-id="' + p.id + '" aria-label="' + esc(p.name) + ' 뒤로"' + (extra.last ? ' disabled' : '') + '>↓</button></span>' : '') +
+      '</li>';
   }
 
   /* ---------- 상단 카테고리 ---------- */
@@ -296,6 +303,7 @@
     h += '<div class="d-actions">' +
       '<a class="btn map-n" href="' + U.naverUrl(p) + '" target="_blank" rel="noopener">네이버지도</a>' +
       '<a class="btn map-k" href="' + U.kakaoUrl(p) + '" target="_blank" rel="noopener">카카오맵</a>' +
+      (U.kakaoRouteUrl(p) ? '<a class="btn route" href="' + U.kakaoRouteUrl(p) + '" target="_blank" rel="noopener">카카오맵 길찾기 (현재 위치에서)</a>' : '') +
       '<button type="button" class="btn near" data-act="near" data-id="' + p.id + '">이 근처 둘러보기</button></div>';
 
     /* 확인이 필요한 점 */
@@ -421,19 +429,27 @@
         '<button type="button" class="btn" data-act="back">장소 둘러보기</button></div>';
       el.body.innerHTML = h; return;
     }
-    var co = courseOrder(ids);
+    var manual = shared ? S.shareManual : S.manual;
+    var co = courseOrder(ids, manual);
     var stayMin = 0, stayMax = 0;
     co.list.forEach(function (x) { if (x.p.stayMinutes) { stayMin += x.p.stayMinutes[0]; stayMax += x.p.stayMinutes[1]; } });
-    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서 초안이에요. 걷는 시간 약 ' + co.totalWalk + '분(직선거리로 어림), 머무는 시간 ' +
+    h += '<p>' + (manual ? (shared ? '친구가 정한 순서예요. ' : '직접 정한 순서예요. ') + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 출발하면 걷는 시간 약 ' :
+      esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서 초안이에요. 걷는 시간 약 ') + co.totalWalk + '분(직선거리로 어림), 머무는 시간 ' +
       hm(stayMin) + '~' + hm(stayMax) + ' (어림값). 지도의 선은 실제 길이 아니라 방문 순서를 이은 선이에요. 실제 길은 네이버지도·카카오맵에서 확인해 주세요.</p></div>';
+    if (!shared && co.list.length > 1) {
+      h += '<div class="orderbar">' + (manual ? '<span>↑↓로 순서를 바꿨어요.</span><button type="button" class="link" data-act="autoOrder">가까운 순으로 다시 정렬</button>' :
+        '<span>오른쪽 ↑↓로 가는 순서를 바꿀 수 있어요.</span>') + '</div>';
+    }
     h += '<ol class="plist course">' + co.list.map(function (x, i) {
-      return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분' });
+      return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분',
+        move: !shared && co.list.length > 1, first: i === 0, last: i === co.list.length - 1 });
     }).join('') + '</ol>';
     if (shared) {
       h += '<div class="savedacts"><button type="button" class="btn primary" data-act="importShared">내 저장에 모두 추가</button></div>';
     } else {
       h += '<div class="savedacts">' +
-        '<button type="button" class="btn primary" data-act="copyText">단톡방용 글 복사</button>' +
+        (navigator.share ? '<button type="button" class="btn primary" data-act="shareNative">공유하기 (카톡 등)</button>' : '') +
+        '<button type="button" class="btn' + (navigator.share ? '' : ' primary') + '" data-act="copyText">단톡방용 글 복사</button>' +
         '<button type="button" class="btn" data-act="copyLink">공유 링크 복사</button>' +
         '<button type="button" class="btn quiet" data-act="clearSaved">모두 지우기</button></div>' +
         '<p class="note">저장 목록은 이 기기 브라우저에만 남아요. 친구에게는 공유 링크나 단톡방용 글로 보내 주세요.</p>';
@@ -443,10 +459,10 @@
   function hm(m) { return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'; }
   function shareUrl(ids) {
     var base = window.location.href.split('#')[0].replace(/([?&])now=[^&]*&?/, '$1').replace(/[?&]$/, '');
-    return base + '#share--' + ids.join('--');
+    return base + (S.manual ? '#share-m--' : '#share--') + ids.join('--');
   }
   function shareText() {
-    var co = courseOrder(S.saved);
+    var co = courseOrder(S.saved, S.manual);
     var lines = ['[홍대 느슨지도] 오늘 갈 곳 ' + co.list.length + '곳', ''];
     co.list.forEach(function (x, i) {
       lines.push((i + 1) + '. ' + x.p.name + ' (' + catById[x.p.primaryCategory].label + ')');
@@ -461,7 +477,7 @@
   function renderMap() {
     var items = [], sel = S.view === 'place' ? S.placeId : null;
     if (S.view === 'saved' || S.view === 'share') {
-      var co = courseOrder(S.view === 'saved' ? S.saved : S.shareIds);
+      var co = courseOrder(S.view === 'saved' ? S.saved : S.shareIds, S.view === 'saved' ? S.manual : S.shareManual);
       co.list.forEach(function (x, i) { items.push(markerFor(x.p, { number: i + 1 })); });
       var pts = [[startPoint().lat, startPoint().lng]].concat(co.list.map(function (x) { return [x.p.location.lat, x.p.location.lng]; }));
       M.showRoute(pts); M.clearRings();
@@ -572,6 +588,7 @@
     var h = decodeURIComponent(window.location.hash.replace(/^#/, ''));
     if (h.indexOf('p-') === 0 && byId[h.slice(2)]) return { view: 'place', id: h.slice(2) };
     if (h === 'saved') return { view: 'saved' };
+    if (h.indexOf('share-m--') === 0) return { view: 'share', manual: true, ids: h.slice(9).split('--').filter(function (id) { return byId[id]; }) };
     if (h.indexOf('share--') === 0) return { view: 'share', ids: h.slice(7).split('--').filter(function (id) { return byId[id]; }) };
     return { view: 'list' };
   }
@@ -590,7 +607,7 @@
     var prev = S.view;
     S.view = r.view;
     S.placeId = r.id || null;
-    if (r.view === 'share') S.shareIds = r.ids;
+    if (r.view === 'share') { S.shareIds = r.ids; S.shareManual = !!r.manual; }
     render();
     if (r.view === 'list' && prev !== 'list') el.body.scrollTop = S.listScroll;
     else if (r.view !== 'list') el.body.scrollTop = 0;
@@ -752,7 +769,21 @@
     else if (act === 'clear') clearFilters();
     else if (act === 'toggleHidden') { S.showHidden = !S.showHidden; render(); }
     else if (act === 'copyText') copy(shareText(), '단톡방에 붙여 넣으면 돼요');
-    else if (act === 'copyLink') copy(shareUrl(S.saved), '공유 링크를 복사했어요');
+    else if (act === 'copyLink') copy(shareUrl(courseOrder(S.saved, S.manual).list.map(function (x) { return x.p.id; })), '공유 링크를 복사했어요');
+    else if (act === 'shareNative') {
+      navigator.share({ title: '홍대 느슨지도', text: shareText() }).catch(function () { /* 사용자가 취소 */ });
+    }
+    else if (act === 'moveUp' || act === 'moveDown') {
+      var order = courseOrder(S.saved, S.manual).list.map(function (x) { return x.p.id; });
+      var i = order.indexOf(id), j = act === 'moveUp' ? i - 1 : i + 1;
+      if (i >= 0 && j >= 0 && j < order.length) {
+        var tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+        S.saved = order; S.manual = true;
+        store(C.storageKeys.saved, S.saved); store('hongdae-map:manual:v1', true);
+        var keepS = el.body.scrollTop; render(); el.body.scrollTop = keepS;
+      }
+    }
+    else if (act === 'autoOrder') { S.manual = false; store('hongdae-map:manual:v1', false); render(); toast('가까운 순으로 다시 정렬했어요'); }
     else if (act === 'clearSaved') {
       modal('<h2>저장한 ' + S.saved.length + '곳을 모두 지울까요?</h2><p>이 기기에 저장된 목록이 사라져요.</p><div class="modal-acts">' +
         '<button type="button" class="btn" data-act="closeModal">취소</button><button type="button" class="btn danger" data-act="doClear">모두 지우기</button></div>');

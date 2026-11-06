@@ -129,6 +129,11 @@
 
   /* 외부 지도 링크 (길찾기는 각 앱에서) */
   function naverUrl(p) { return 'https://map.naver.com/p/search/' + encodeURIComponent(p.searchName || p.name); }
+  /* v0.3: 카카오맵 길찾기 (출발지는 카카오맵이 현재 위치로 잡음). 위치가 추정 좌표인 곳은 쓰지 않는다 */
+  function kakaoRouteUrl(p) {
+    if (!p.location || p.location.manual) return null;
+    return 'https://map.kakao.com/link/to/' + encodeURIComponent(p.name) + ',' + p.location.lat + ',' + p.location.lng;
+  }
   function kakaoUrl(p) {
     if (p.location && p.location.accuracy === 'exact') {
       return 'https://map.kakao.com/link/map/' + encodeURIComponent(p.name) + ',' + p.location.lat + ',' + p.location.lng;
@@ -144,6 +149,6 @@
     openState: openState, isOpenNow: isOpenNow, isLate: isLate, weekRows: weekRows,
     activeEvents: activeEvents, daysBetween: daysBetween, fmt: fmt, parseRange: parseRange,
     chosung: chosung, isChosungOnly: isChosungOnly, norm: norm,
-    naverUrl: naverUrl, kakaoUrl: kakaoUrl, blogSearchUrl: blogSearchUrl, DAY_KO: DAY_KO
+    naverUrl: naverUrl, kakaoUrl: kakaoUrl, kakaoRouteUrl: kakaoRouteUrl, blogSearchUrl: blogSearchUrl, DAY_KO: DAY_KO
   };
 })();

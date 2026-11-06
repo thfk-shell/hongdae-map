@@ -750,6 +750,7 @@ a { color: var(--mid); }
 .mapalert .why { margin-top: 6px; font-size: 12px; opacity: .8; word-break: break-all; }
 .mapalert-x { position: absolute; top: 4px; right: 4px; width: 36px; height: 36px; border: 0; background: none; color: inherit; font-size: 22px; line-height: 1; cursor: pointer; border-radius: 8px; }
 .mapalert-x:focus-visible { outline: 2px solid currentColor; }
+.map.base-labels .exit-pin, .map.base-labels .zone-label { display: none; }
 .pin-wrap { background: none; border: 0; }
 .pin { position: relative; width: 34px; height: 34px; display: grid; place-items: center; }
 .pin-dot {
@@ -935,6 +936,7 @@ a { color: var(--mid); }
 .d-reason { margin: 0 0 8px; font-size: 17px; font-weight: 600; line-height: 1.4; background: linear-gradient(transparent 60%, color-mix(in srgb, var(--hi) 70%, transparent) 60%); display: inline; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .d-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); margin-top: 10px; }
 .d-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.d-actions .route { grid-column: 1 / -1; }
 .d-actions .near { grid-column: 1 / -1; background: var(--hi); color: #17201C; border-color: var(--ink); }
 .map-n { border-color: #03C75A; color: #03A04A; }
 .map-k { border-color: #E5C200; color: #6B5800; }
@@ -991,6 +993,10 @@ a { color: var(--mid); }
 .course .pc-ic { background: var(--c); }
 .course .pc-ic b { color: #fff; }
 .savedacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pc-move { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-left: 4px; }
+.pc-move button { width: 36px; height: 30px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; font-size: 14px; line-height: 1; }
+.pc-move button:disabled { opacity: .3; }
+.orderbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 13px; color: var(--muted); }
 
 /* ---------- 알림·창 ---------- */
 .toast {
@@ -1353,6 +1359,7 @@ window.HM_SETTINGS = {
         "id": "vworld",
         "name": "브이월드 기본 지도",
         "needsKey": "vworld",
+        "baseLabels": true,
         "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png",
         "subdomains": "",
         "minNativeZoom": 6,
@@ -1364,6 +1371,7 @@ window.HM_SETTINGS = {
         "id": "white",
         "name": "브이월드 흰색 지도",
         "needsKey": "vworld",
+        "baseLabels": true,
         "optIn": true,
         "url": "https://api.vworld.kr/req/wmts/1.0.0/{key}/white/{z}/{y}/{x}.png",
         "subdomains": "",
@@ -4649,6 +4657,11 @@ window.HM_PLACES = {
 
   /* 외부 지도 링크 (길찾기는 각 앱에서) */
   function naverUrl(p) { return 'https://map.naver.com/p/search/' + encodeURIComponent(p.searchName || p.name); }
+  /* v0.3: 카카오맵 길찾기 (출발지는 카카오맵이 현재 위치로 잡음). 위치가 추정 좌표인 곳은 쓰지 않는다 */
+  function kakaoRouteUrl(p) {
+    if (!p.location || p.location.manual) return null;
+    return 'https://map.kakao.com/link/to/' + encodeURIComponent(p.name) + ',' + p.location.lat + ',' + p.location.lng;
+  }
   function kakaoUrl(p) {
     if (p.location && p.location.accuracy === 'exact') {
       return 'https://map.kakao.com/link/map/' + encodeURIComponent(p.name) + ',' + p.location.lat + ',' + p.location.lng;
@@ -4664,7 +4677,7 @@ window.HM_PLACES = {
     openState: openState, isOpenNow: isOpenNow, isLate: isLate, weekRows: weekRows,
     activeEvents: activeEvents, daysBetween: daysBetween, fmt: fmt, parseRange: parseRange,
     chosung: chosung, isChosungOnly: isChosungOnly, norm: norm,
-    naverUrl: naverUrl, kakaoUrl: kakaoUrl, blogSearchUrl: blogSearchUrl, DAY_KO: DAY_KO
+    naverUrl: naverUrl, kakaoUrl: kakaoUrl, kakaoRouteUrl: kakaoRouteUrl, blogSearchUrl: blogSearchUrl, DAY_KO: DAY_KO
   };
 })();
 
@@ -4825,6 +4838,7 @@ window.HM_PLACES = {
 
   function tryTiles(list, i) {
     if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
+    map.getContainer().classList.remove('base-labels');
     if (i >= list.length) {
       tilesOk = false;
       map.getContainer().classList.add('no-tiles');
@@ -4855,6 +4869,8 @@ window.HM_PLACES = {
       if (!tilesOk) {
         tilesOk = true; activeTile = t.id; activeInfo = { id: t.id, name: t.name, credit: t.credit || '' };
         map.getContainer().classList.remove('no-tiles');
+        /* v0.3: 브이월드처럼 역 출구 번호·동네 이름이 이미 그려진 지도면, 우리가 따로 그린 출구·동네 글씨를 숨겨 겹침을 없앤다 */
+        map.getContainer().classList.toggle('base-labels', !!t.baseLabels);
         note(t.id, 'tiles', 'ok', '타일 표시됨');
         if (opts.onTilesOk) opts.onTilesOk(t);
       }
@@ -5015,6 +5031,7 @@ window.HM_PLACES = {
     cats: [], quick: [], tag: null, q: '',
     near: null, start: load(C.storageKeys.start, C.defaultStartPoint), me: null,
     saved: load(C.storageKeys.saved, []).filter(function (id) { return byId[id]; }),
+    manual: load('hongdae-map:manual:v1', false) === true, shareManual: false,
     showHidden: false, sheet: 'half', listScroll: 0, depth: 0, storageWarned: false
   };
   if (S.start === 'me' || !C.startPoints.some(function (s) { return s.id === S.start; })) S.start = C.defaultStartPoint;
@@ -5107,12 +5124,14 @@ window.HM_PLACES = {
   }
 
   /* 저장 목록을 기준점에서 가까운 곳부터 차례로 잇는 순서 (실제 길찾기 아님) */
-  function courseOrder(ids) {
+  /* keep=true: 주어진 순서 그대로(직접 정한 순서), false: 기준점에서 가까운 곳부터 */
+  function courseOrder(ids, keep) {
     var rest = ids.map(function (id) { return byId[id]; }).filter(Boolean);
     var cur = startPoint(), out = [], total = 0;
     while (rest.length) {
       var bi = 0, bd = Infinity;
-      rest.forEach(function (p, i) { var d = U.distance(cur, p.location); if (d < bd) { bd = d; bi = i; } });
+      if (keep) bd = U.distance(cur, rest[0].location);
+      else rest.forEach(function (p, i) { var d = U.distance(cur, p.location); if (d < bd) { bd = d; bi = i; } });
       var next = rest.splice(bi, 1)[0];
       var w = U.walkMinutes(bd, C.walk);
       total += w;
@@ -5167,7 +5186,11 @@ window.HM_PLACES = {
       (x.min != null ? '<span class="walk">' + (extra && extra.walkLabel ? esc(extra.walkLabel) : '도보 ' + x.min + '분') + '</span>' : '') +
       (p.priceLevel ? '<span class="price">' + PRICE[p.priceLevel].split(' ')[0] + '</span>' : '') +
       flagChips(p) + '</span>' +
-      '</span></button>' + heartBtn(p, true) + '</li>';
+      '</span></button>' + heartBtn(p, true) +
+      (extra && extra.move ? '<span class="pc-move">' +
+        '<button type="button" data-act="moveUp" data-id="' + p.id + '" aria-label="' + esc(p.name) + ' 앞으로"' + (extra.first ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" data-act="moveDown" data-id="' + p.id + '" aria-label="' + esc(p.name) + ' 뒤로"' + (extra.last ? ' disabled' : '') + '>↓</button></span>' : '') +
+      '</li>';
   }
 
   /* ---------- 상단 카테고리 ---------- */
@@ -5281,6 +5304,7 @@ window.HM_PLACES = {
     h += '<div class="d-actions">' +
       '<a class="btn map-n" href="' + U.naverUrl(p) + '" target="_blank" rel="noopener">네이버지도</a>' +
       '<a class="btn map-k" href="' + U.kakaoUrl(p) + '" target="_blank" rel="noopener">카카오맵</a>' +
+      (U.kakaoRouteUrl(p) ? '<a class="btn route" href="' + U.kakaoRouteUrl(p) + '" target="_blank" rel="noopener">카카오맵 길찾기 (현재 위치에서)</a>' : '') +
       '<button type="button" class="btn near" data-act="near" data-id="' + p.id + '">이 근처 둘러보기</button></div>';
 
     /* 확인이 필요한 점 */
@@ -5406,19 +5430,27 @@ window.HM_PLACES = {
         '<button type="button" class="btn" data-act="back">장소 둘러보기</button></div>';
       el.body.innerHTML = h; return;
     }
-    var co = courseOrder(ids);
+    var manual = shared ? S.shareManual : S.manual;
+    var co = courseOrder(ids, manual);
     var stayMin = 0, stayMax = 0;
     co.list.forEach(function (x) { if (x.p.stayMinutes) { stayMin += x.p.stayMinutes[0]; stayMax += x.p.stayMinutes[1]; } });
-    h += '<p>' + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서 초안이에요. 걷는 시간 약 ' + co.totalWalk + '분(직선거리로 어림), 머무는 시간 ' +
+    h += '<p>' + (manual ? (shared ? '친구가 정한 순서예요. ' : '직접 정한 순서예요. ') + esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 출발하면 걷는 시간 약 ' :
+      esc(startPoint().label.replace(/ \(.+\)/, '')) + '에서 가까운 곳부터 이은 순서 초안이에요. 걷는 시간 약 ') + co.totalWalk + '분(직선거리로 어림), 머무는 시간 ' +
       hm(stayMin) + '~' + hm(stayMax) + ' (어림값). 지도의 선은 실제 길이 아니라 방문 순서를 이은 선이에요. 실제 길은 네이버지도·카카오맵에서 확인해 주세요.</p></div>';
+    if (!shared && co.list.length > 1) {
+      h += '<div class="orderbar">' + (manual ? '<span>↑↓로 순서를 바꿨어요.</span><button type="button" class="link" data-act="autoOrder">가까운 순으로 다시 정렬</button>' :
+        '<span>오른쪽 ↑↓로 가는 순서를 바꿀 수 있어요.</span>') + '</div>';
+    }
     h += '<ol class="plist course">' + co.list.map(function (x, i) {
-      return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분' });
+      return card({ p: x.p, min: x.walk }, { number: i + 1, walkLabel: (i === 0 ? '기준점에서 ' : '앞 장소에서 ') + x.walk + '분',
+        move: !shared && co.list.length > 1, first: i === 0, last: i === co.list.length - 1 });
     }).join('') + '</ol>';
     if (shared) {
       h += '<div class="savedacts"><button type="button" class="btn primary" data-act="importShared">내 저장에 모두 추가</button></div>';
     } else {
       h += '<div class="savedacts">' +
-        '<button type="button" class="btn primary" data-act="copyText">단톡방용 글 복사</button>' +
+        (navigator.share ? '<button type="button" class="btn primary" data-act="shareNative">공유하기 (카톡 등)</button>' : '') +
+        '<button type="button" class="btn' + (navigator.share ? '' : ' primary') + '" data-act="copyText">단톡방용 글 복사</button>' +
         '<button type="button" class="btn" data-act="copyLink">공유 링크 복사</button>' +
         '<button type="button" class="btn quiet" data-act="clearSaved">모두 지우기</button></div>' +
         '<p class="note">저장 목록은 이 기기 브라우저에만 남아요. 친구에게는 공유 링크나 단톡방용 글로 보내 주세요.</p>';
@@ -5428,10 +5460,10 @@ window.HM_PLACES = {
   function hm(m) { return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'; }
   function shareUrl(ids) {
     var base = window.location.href.split('#')[0].replace(/([?&])now=[^&]*&?/, '$1').replace(/[?&]$/, '');
-    return base + '#share--' + ids.join('--');
+    return base + (S.manual ? '#share-m--' : '#share--') + ids.join('--');
   }
   function shareText() {
-    var co = courseOrder(S.saved);
+    var co = courseOrder(S.saved, S.manual);
     var lines = ['[홍대 느슨지도] 오늘 갈 곳 ' + co.list.length + '곳', ''];
     co.list.forEach(function (x, i) {
       lines.push((i + 1) + '. ' + x.p.name + ' (' + catById[x.p.primaryCategory].label + ')');
@@ -5446,7 +5478,7 @@ window.HM_PLACES = {
   function renderMap() {
     var items = [], sel = S.view === 'place' ? S.placeId : null;
     if (S.view === 'saved' || S.view === 'share') {
-      var co = courseOrder(S.view === 'saved' ? S.saved : S.shareIds);
+      var co = courseOrder(S.view === 'saved' ? S.saved : S.shareIds, S.view === 'saved' ? S.manual : S.shareManual);
       co.list.forEach(function (x, i) { items.push(markerFor(x.p, { number: i + 1 })); });
       var pts = [[startPoint().lat, startPoint().lng]].concat(co.list.map(function (x) { return [x.p.location.lat, x.p.location.lng]; }));
       M.showRoute(pts); M.clearRings();
@@ -5557,6 +5589,7 @@ window.HM_PLACES = {
     var h = decodeURIComponent(window.location.hash.replace(/^#/, ''));
     if (h.indexOf('p-') === 0 && byId[h.slice(2)]) return { view: 'place', id: h.slice(2) };
     if (h === 'saved') return { view: 'saved' };
+    if (h.indexOf('share-m--') === 0) return { view: 'share', manual: true, ids: h.slice(9).split('--').filter(function (id) { return byId[id]; }) };
     if (h.indexOf('share--') === 0) return { view: 'share', ids: h.slice(7).split('--').filter(function (id) { return byId[id]; }) };
     return { view: 'list' };
   }
@@ -5575,7 +5608,7 @@ window.HM_PLACES = {
     var prev = S.view;
     S.view = r.view;
     S.placeId = r.id || null;
-    if (r.view === 'share') S.shareIds = r.ids;
+    if (r.view === 'share') { S.shareIds = r.ids; S.shareManual = !!r.manual; }
     render();
     if (r.view === 'list' && prev !== 'list') el.body.scrollTop = S.listScroll;
     else if (r.view !== 'list') el.body.scrollTop = 0;
@@ -5737,7 +5770,21 @@ window.HM_PLACES = {
     else if (act === 'clear') clearFilters();
     else if (act === 'toggleHidden') { S.showHidden = !S.showHidden; render(); }
     else if (act === 'copyText') copy(shareText(), '단톡방에 붙여 넣으면 돼요');
-    else if (act === 'copyLink') copy(shareUrl(S.saved), '공유 링크를 복사했어요');
+    else if (act === 'copyLink') copy(shareUrl(courseOrder(S.saved, S.manual).list.map(function (x) { return x.p.id; })), '공유 링크를 복사했어요');
+    else if (act === 'shareNative') {
+      navigator.share({ title: '홍대 느슨지도', text: shareText() }).catch(function () { /* 사용자가 취소 */ });
+    }
+    else if (act === 'moveUp' || act === 'moveDown') {
+      var order = courseOrder(S.saved, S.manual).list.map(function (x) { return x.p.id; });
+      var i = order.indexOf(id), j = act === 'moveUp' ? i - 1 : i + 1;
+      if (i >= 0 && j >= 0 && j < order.length) {
+        var tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+        S.saved = order; S.manual = true;
+        store(C.storageKeys.saved, S.saved); store('hongdae-map:manual:v1', true);
+        var keepS = el.body.scrollTop; render(); el.body.scrollTop = keepS;
+      }
+    }
+    else if (act === 'autoOrder') { S.manual = false; store('hongdae-map:manual:v1', false); render(); toast('가까운 순으로 다시 정렬했어요'); }
     else if (act === 'clearSaved') {
       modal('<h2>저장한 ' + S.saved.length + '곳을 모두 지울까요?</h2><p>이 기기에 저장된 목록이 사라져요.</p><div class="modal-acts">' +
         '<button type="button" class="btn" data-act="closeModal">취소</button><button type="button" class="btn danger" data-act="doClear">모두 지우기</button></div>');
